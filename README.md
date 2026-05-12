@@ -1,73 +1,85 @@
-# React + TypeScript + Vite
+# 🟢 BRAVOOS — RETAIL OPERATING SYSTEM
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**BravoOS** is a comprehensive, role-based retail management ecosystem designed to solve the critical challenges of modern supply chains. Built specifically for the **PASHA Hackathon 2026**, this platform transforms traditional retail operations into a digitized, data-driven, and high-efficiency environment.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🎯 PASHA Hackathon Use Cases
 
-## React Compiler
+BravoOS is architected to address the three core pillars of the PASHA Hackathon:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Digitalization & Automation of Supply Chain Processes
+*   **Frictionless Workflow**: Replaces paper-based systems with a unified digital ecosystem.
+*   **Unified Collaboration**: Integrates vendor management, automated purchase orders, and financial invoicing into a single stream.
+*   **Financial Accuracy**: Real-time tracking of inter-branch transfers and vendor payments ensures zero-leakage logistics.
 
-## Expanding the ESLint configuration
+### 2. Data-Driven Insights & Operational Excellence
+*   **Smart Dashboarding**: Role-specific dashboards where every operational move is dictated by real-time data.
+*   **AI-Powered Monitoring**: Continuous scanning of inventory levels and vendor performance to suggest proactive improvements.
+*   **Strategic Control**: HQ Admins gain a "God-eye view" of all branches, enabling macro-level optimizations.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 3. Operational Waste Management & Shrinkage Reduction
+*   **Intelligent Control**: Minimizes internal losses through precise waste logging and automated expiry tracking.
+*   **Shrinkage Prevention**: Real-time alerts for low-stock and expiring items allow managers to move stock (Transfers) before it becomes waste.
+*   **Loss Protection**: Protects profitability by improving stock accuracy and reducing damage-related losses.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 👥 Role-Based Architecture & Functions
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+The system enforces strict **Role-Based Access Control (RBAC)** across three operational tiers, ensuring every user has the exact tools they need.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 👑 HQ Admin (Global Strategy)
+The "Superuser" responsible for the entire network's health.
+*   **Global Analytics**: Access to cross-branch ROI and performance metrics.
+*   **Branch Management**: Overseeing branch performance scores and status.
+*   **User Management**: Managing staff access and role permissions.
+*   **Vendor Portal**: Tracking vendor SLA adherence and managing procurement.
+*   **System Settings**: Configuring global security, alerts, and system-wide preferences.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 👔 Store Manager (Operational Triage)
+The field leader focused on store-level excellence.
+*   **Command Center**: Real-time monitoring of store alerts and system logs.
+*   **Inventory Control**: Managing stock locations, counts, and low-stock warnings.
+*   **Transfer Logistics**: Executing inter-branch transfers to optimize stock distribution.
+*   **Alert Resolution**: Triaging high-priority issues before they impact the floor.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### 👥 Store Staff (Daily Execution)
+The front-line operator ensuring smooth floor operations.
+*   **My Shift**: A personalized workspace showing shift progress and performance.
+*   **Task Execution**: Real-time task list for stock checks, temp logs, and maintenance.
+*   **Waste Logging**: Direct logging of damaged or expired goods with audit trails.
+*   **Smart Receiving**: Scanning POs and conducting quality checklists for new deliveries.
+
+---
+
+## 🏆 Jury Evaluation Criteria Alignment (2026)
+
+| Criteria | How BravoOS Delivers |
+| :--- | :--- |
+| **Innovativeness & Creativity (20%)** | Implements a "Terminal-inspired" UI that provides a high-density data environment without clutter, creating a unique "Retail OS" experience. |
+| **User Friendliness & UX (20%)** | Features an intuitive, dark-mode glassmorphic interface with seamless role-based navigation and interactive micro-animations. |
+| **Feasibility & Viability (20%)** | Built on a modular React/Vite stack with a clear path to production through established RBAC and scalable data structures. |
+| **Commercialization Potential (20%)** | Directly addresses the billion-dollar retail waste problem with automated logistics and AI-driven insights, offering immediate ROI. |
+| **Team & Presentation (20%)** | Structured for clear, professional presentation with demo-ready credentials and high-fidelity functional prototypes. |
+
+---
+
+## 🛠️ Technical Stack
+*   **Frontend**: React + Vite (High-performance rendering)
+*   **Styling**: Vanilla CSS (Custom Terminal UI Design System)
+*   **Icons**: Lucide React
+*   **Navigation**: React Router DOM (Secured with Protected Routes)
+*   **State Management**: Context API (Role-based auth persistence)
+
+---
+
+## 🚀 Getting Started
+
+1.  **Clone the Repo**: `git clone https://github.com/Umugisha01/BRAVO_Rugamba-01.git`
+2.  **Install Dependencies**: `npm install`
+3.  **Run Development Server**: `npm run dev`
+4.  **Login**: Use the demo buttons on the login screen to switch between Admin, Manager, and Staff roles.
+
+---
+*Created by Umugisha for the PASHA Hackathon 2026.*
