@@ -1,0 +1,36 @@
+.delivery-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.delivery-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-glass);
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.checkbox-label {
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  display: none;
+}
+
+.checkbox-custom {
+  opacity: 0.5;
+  transition: var(--transition);
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+  opacity: 1;
+}
+
+.workflow-details {
+  font-size: 0.9rem;
+  padding-bottom: 15px;
+  border-bottom: 1px dashed var(--border-glass);
+}

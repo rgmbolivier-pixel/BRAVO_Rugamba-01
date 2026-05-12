@@ -1,0 +1,18 @@
+.branches-container .branch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.branch-card {
+  transition: var(--transition);
+}
+
+.branch-card:hover {
+  background: rgba(0, 255, 65, 0.05) !important;
+  border-color: var(--primary) !important;
+}
+
+.add-branch-form .terminal-input {
+  margin-bottom: 5px;
+}

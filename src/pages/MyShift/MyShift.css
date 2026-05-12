@@ -1,0 +1,122 @@
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.task-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-glass);
+  border-left: 4px solid var(--border-glass);
+  transition: var(--transition);
+}
+
+.task-card:hover {
+  background: rgba(0, 255, 65, 0.05);
+}
+
+.task-card.priority-high { border-left-color: var(--danger); }
+.task-card.priority-medium { border-left-color: var(--warning); }
+.task-card.priority-low { border-left-color: var(--success); }
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-bottom: 1px dashed var(--border-glass);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.task-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.checkbox {
+  color: var(--text-dim);
+  font-size: 1.2rem;
+}
+
+.task-body {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-info {
+  display: flex;
+  gap: 20px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.task-instructions {
+  font-size: 0.85rem;
+  color: var(--text-main);
+  margin: 5px 0;
+  line-height: 1.4;
+}
+
+.task-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.completed-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.completed-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.comp-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.comp-info strong {
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.comp-info span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.perf-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.perf-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  border-bottom: 1px dashed var(--border-glass);
+  padding-bottom: 5px;
+}
+
+.perf-row span:last-child {
+  font-weight: bold;
+  color: var(--text-main);
+}

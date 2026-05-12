@@ -1,0 +1,13 @@
+.vendors-container .vendor-card {
+  transition: var(--transition);
+}
+
+.vendors-container .vendor-card:hover {
+  border-color: var(--primary);
+  background: rgba(0, 255, 65, 0.05) !important;
+}
+
+.vendors-container .w-10 {
+  width: 2.5rem;
+  height: 2.5rem;
+}

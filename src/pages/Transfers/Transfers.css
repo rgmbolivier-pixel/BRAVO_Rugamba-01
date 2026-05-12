@@ -1,0 +1,103 @@
+.flex { display: flex; }
+.gap-4 { gap: 1rem; }
+.gap-2 { gap: 0.5rem; }
+.justify-between { justify-content: space-between; }
+.items-center { align-items: center; }
+.m-0 { margin: 0; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mt-1 { margin-top: 0.25rem; }
+.text-sm { font-size: 0.875rem; }
+.text-xs { font-size: 0.75rem; }
+.font-bold { font-weight: bold; }
+.border-none { border: none !important; }
+
+.transfer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.transfer-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-glass);
+}
+
+.transfer-card.border-success {
+  border-left: 4px solid var(--success);
+}
+
+.transfer-route {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px dashed var(--border-glass);
+}
+
+.route-point {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.transfer-details {
+  padding: 15px;
+}
+
+.transfer-actions {
+  display: flex;
+  gap: 10px;
+  padding: 10px 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--border-glass);
+}
+
+.bg-primary-dark {
+  background: rgba(0, 255, 65, 0.05);
+  border: 1px solid var(--primary-dark);
+}
+
+.ai-transfer-card {
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed var(--primary-dark);
+  border-radius: 4px;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-list li {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dashed var(--border-glass);
+  padding-bottom: 8px;
+}
+
+.hist-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hist-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.border-t { border-top-width: 1px; border-top-style: solid; }
+.border-glass { border-color: var(--border-glass); }
+.pt-3 { padding-top: 0.75rem; }

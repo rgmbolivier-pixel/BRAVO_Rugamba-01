@@ -1,0 +1,145 @@
+.manager-header .header-stats {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.performance-banner {
+  margin-left: auto;
+  padding: 10px 20px;
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px dashed var(--primary);
+  border-radius: 4px;
+}
+
+.alerts-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.alert-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 4px solid;
+}
+
+.alert-card.critical {
+  border-color: var(--danger);
+  background: linear-gradient(90deg, rgba(255, 0, 60, 0.1) 0%, transparent 100%);
+}
+
+.alert-card.warning {
+  border-color: var(--warning);
+}
+
+.alert-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+.alert-info p {
+  margin: 0 0 8px 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.ai-rec {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+}
+
+.alert-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.side-panels {
+  display: flex;
+  flex-direction: column;
+}
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-actions button {
+  padding: 12px;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+.waste-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.waste-bar .bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.system-log {
+  background: rgba(0, 0, 0, 0.8);
+  padding: 15px;
+  border: 1px solid var(--border-glass);
+  font-size: 0.85rem;
+  height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.log-entry {
+  display: flex;
+  gap: 10px;
+}
+
+.log-time {
+  color: var(--text-dim);
+}
+
+.log-success { color: var(--success); }
+.log-error { color: var(--danger); }
+.log-info { color: var(--text-muted); }
+
+.log-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px dashed var(--border-glass);
+  padding-top: 10px;
+}
+
+.prompt {
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.terminal-input-inline {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  width: 100%;
+  outline: none;
+}

@@ -1,0 +1,14 @@
+.invoicing-container .panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.invoicing-container .text-2xl {
+  font-size: 1.5rem;
+}
+
+.invoicing-container .badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+}

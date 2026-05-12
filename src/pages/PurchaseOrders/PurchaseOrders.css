@@ -1,0 +1,42 @@
+.po-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.po-card {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-glass);
+}
+
+.po-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.border-b { border-bottom-width: 1px; border-bottom-style: solid; }
+.border-l-2 { border-left-width: 2px; border-left-style: solid; }
+.pb-2 { padding-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mx-2 { margin-left: 0.5rem; margin-right: 0.5rem; }
+.px-1 { padding-left: 0.25rem; padding-right: 0.25rem; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.p-3 { padding: 0.75rem; }
+.pl-2 { padding-left: 0.5rem; }
+.block { display: block; }
+.text-right { text-align: right; }
+.opacity-80 { opacity: 0.8; }
+.rounded { border-radius: 4px; }
+.flex-col { flex-direction: column; }
+
+.create-po-form .terminal-input.small {
+  padding: 4px;
+  font-size: 0.75rem;
+}
+
+.w-16 { width: 4rem; }
