@@ -2,7 +2,6 @@ import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 export const Topbar: React.FC = () => {
-  const { user } = useAuth();
   const now = new Date();
   const timeString = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
 
