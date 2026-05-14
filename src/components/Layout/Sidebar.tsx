@@ -25,7 +25,7 @@ export const Sidebar: React.FC = () => {
     const items = [];
 
     // Staff items
-    if (user.role === 'STAFF') {
+    if (user.role === 'staff') {
       items.push({ path: '/dashboard', icon: LayoutDashboard, label: 'DASHBOARD' });
       items.push({ path: '/my-shift', icon: Clock, label: 'MY SHIFT' });
       items.push({ path: '/tasks', icon: CheckSquare, label: 'TASKS' });
@@ -37,7 +37,7 @@ export const Sidebar: React.FC = () => {
     }
 
     // Manager items
-    if (user.role === 'MANAGER') {
+    if (user.role === 'manager') {
       items.push({ path: '/dashboard', icon: LayoutDashboard, label: 'DASHBOARD' });
       items.push({ path: '/analytics', icon: BarChart3, label: 'ANALYTICS' });
       items.push({ path: '/inventory', icon: Package, label: 'INVENTORY' });
@@ -51,7 +51,7 @@ export const Sidebar: React.FC = () => {
     }
 
     // Admin items
-    if (user.role === 'ADMIN') {
+    if (user.role === 'admin') {
       items.push({ path: '/dashboard', icon: LayoutDashboard, label: 'DASHBOARD' });
       items.push({ path: '/analytics', icon: BarChart3, label: 'ANALYTICS' });
       items.push({ path: '/branches', icon: Building, label: 'BRANCHES' });
@@ -103,10 +103,10 @@ export const Sidebar: React.FC = () => {
 
       <div className="sidebar-footer">
         <div className="operator-info">
-          <span className="op-label">{user.role} OPERATOR</span>
+          <span className="op-label">{user.role.toUpperCase()} OPERATOR</span>
           <span className="op-email">{user.email}</span>
           <div className="op-status">
-            <span className="status-tag">{user.role}</span>
+            <span className="status-tag">{user.role.toUpperCase()}</span>
             {user.branch && <span className="status-tag branch-tag" style={{marginLeft: '4px', background: 'var(--primary-glow-secondary)', borderColor: 'var(--primary-secondary)', color: 'var(--text-bright)'}}>{user.branch}</span>}
           </div>
         </div>

@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { authService } from '../services/api';
+import { jwtDecode } from 'jwt-decode';
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'STAFF';
+export type UserRole = 'admin' | 'manager' | 'staff';
 
 interface User {
   name: string;
@@ -11,36 +13,57 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, role: UserRole) => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('testos_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = (email: string, role: UserRole) => {
-    const newUser: User = {
-      name: role === 'ADMIN' ? 'John Admin' : role === 'MANAGER' ? 'Jane Smith' : 'Sarah Staff',
-      email,
-      role,
-      branch: role !== 'ADMIN' ? 'Downtown Store' : undefined
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const decoded: any = jwtDecode(token);
+          // If token is expired, logout
+          if (decoded.exp * 1000 < Date.now()) {
+            logout();
+          } else {
+            // Fetch profile to get full user data
+            const res = await authService.getUser();
+            setUser(res.data);
+          }
+        } catch (err) {
+          logout();
+        }
+      }
+      setLoading(false);
     };
-    setUser(newUser);
-    localStorage.setItem('testos_user', JSON.stringify(newUser));
+    initAuth();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    const res = await authService.login({ email, password });
+    const { access, refresh, user: userData } = res.data;
+    
+    localStorage.setItem('token', access);
+    localStorage.setItem('refresh', refresh);
+    setUser(userData);
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('testos_user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

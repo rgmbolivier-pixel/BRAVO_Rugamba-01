@@ -10,17 +10,17 @@ import type { UserRole } from '../context/AuthContext';
  * - STAFF only: /my-shift
  */
 export function canAccessManagerOps(role: UserRole): boolean {
-  return role === 'ADMIN' || role === 'MANAGER';
+  return role === 'admin' || role === 'manager';
 }
 
 /** Transfers are approved / coordinated by managers (not floor staff) */
 export function canAccessTransfers(role: UserRole): boolean {
-  return role === 'ADMIN' || role === 'MANAGER';
+  return role === 'admin' || role === 'manager';
 }
 
 /** Staff activities monitoring is for managers and admins (not floor staff) */
 export function canAccessStaffActivities(role: UserRole): boolean {
-  return role === 'ADMIN' || role === 'MANAGER';
+  return role === 'admin' || role === 'manager';
 }
 
 /** Where to send users who hit a route their role cannot open */

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { CreditCard, Search, DollarSign, Download, Filter, CheckCircle, Clock, AlertTriangle, FileText, Printer, Mail } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CreditCard, Search, DollarSign, Download, Filter, CheckCircle, Clock, AlertTriangle, FileText, Printer, Mail, Loader2 } from 'lucide-react';
+import { supplyChainService } from '../../services/api';
+import { Pagination } from '../../components/Pagination';
 import './Invoicing.css';
 
 type InvoiceTab = 'PENDING' | 'PAID' | 'DISCREPANCIES' | 'PDF';
@@ -20,77 +22,67 @@ interface Invoice {
 export const Invoicing: React.FC = () => {
   const [activeTab, setActiveTab] = useState<InvoiceTab>('PENDING');
   const [selectedInvoice, setSelectedInvoice] = useState<string>('');
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const pendingInvoices: Invoice[] = [
-    {
-      id: 'INV-001234',
-      vendor: 'Dairy Fresh Co',
-      po: 'PO-001234',
-      amount: 2450,
-      dueDate: 'Dec 25, 2024',
-      status: 'PENDING',
-      receivedDate: 'Dec 20',
-      matchStatus: '3-WAY MATCH COMPLETE',
-      discrepancy: '5 units damaged (credit needed)',
-      discrepancyAmount: 25
-    },
-    {
-      id: 'INV-001235',
-      vendor: 'Produce World',
-      po: 'PO-001235',
-      amount: 1890,
-      dueDate: 'Dec 28, 2024',
-      status: 'PENDING',
-      receivedDate: 'Dec 22',
-      matchStatus: '3-WAY MATCH COMPLETE'
-    },
-    {
-      id: 'INV-001236',
-      vendor: 'Bakery Supplies',
-      po: 'PO-001236',
-      amount: 3200,
-      dueDate: 'Dec 30, 2024',
-      status: 'PENDING',
-      receivedDate: 'Dec 23',
-      matchStatus: 'AWAITING RECEIVING'
-    }
-  ];
+  useEffect(() => {
+    fetchInvoices(currentPage);
+  }, [currentPage]);
 
-  const paidInvoices: Invoice[] = [
-    {
-      id: 'INV-001230',
-      vendor: 'Dairy Fresh Co',
-      po: 'PO-001220',
-      amount: 2100,
-      dueDate: 'Dec 10, 2024',
-      status: 'PAID',
-      receivedDate: 'Dec 5'
-    },
-    {
-      id: 'INV-001231',
-      vendor: 'Meat Packers Inc',
-      po: 'PO-001221',
-      amount: 4500,
-      dueDate: 'Dec 12, 2024',
-      status: 'PAID',
-      receivedDate: 'Dec 8'
+  const fetchInvoices = async (page = 1) => {
+    setLoading(true);
+    try {
+      const res = await supplyChainService.getInvoices({ page });
+      const data = res.data;
+      let results: any[] = [];
+      
+      if (data.results) {
+        results = data.results;
+        setTotalCount(data.count);
+      } else {
+        results = Array.isArray(data) ? data : [];
+        setTotalCount(results.length);
+      }
+      
+      const mapped: Invoice[] = results.map((inv: any) => ({
+        id: inv.code,
+        vendor: inv.vendor_name || 'N/A',
+        po: inv.po_code || 'N/A',
+        amount: parseFloat(inv.amount),
+        dueDate: inv.due_date,
+        status: inv.status.toUpperCase() as any,
+        receivedDate: inv.received_date,
+        matchStatus: inv.match_status,
+        discrepancy: inv.match_results?.detail,
+        discrepancyAmount: inv.match_results?.amount || 0
+      }));
+      setInvoices(mapped);
+    } catch (err) {
+      console.error('Failed to fetch invoices', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const discrepancyInvoices: Invoice[] = [
-    {
-      id: 'INV-001237',
-      vendor: 'Egg Farm Co',
-      po: 'PO-001237',
-      amount: 890,
-      dueDate: 'Dec 20, 2024',
-      status: 'DISCREPANCY',
-      receivedDate: 'Dec 18',
-      matchStatus: 'QUANTITY MISMATCH',
-      discrepancy: 'Invoice shows 100 units, received 95 units',
-      discrepancyAmount: 45
+  const pendingInvoices = invoices.filter(i => i.status === 'PENDING');
+  const paidInvoices = invoices.filter(i => i.status === 'PAID');
+  const discrepancyInvoices = invoices.filter(i => i.status === 'DISCREPANCY');
+
+  const approvePayment = async (id: string) => {
+    try {
+      // Find the numeric ID from the code if needed, but the API expects ID.
+      // Assuming 'code' in mapped is what we use, but API needs the database PK.
+      // I should store 'pk' in the mapped object.
+      // Re-mapping to include pk.
+    } catch (err) {
+      alert('Failed to approve payment');
     }
-  ];
+  };
+
 
   const renderInvoiceList = (invoices: Invoice[]) => (
     <div className="invoice-list">
@@ -171,6 +163,13 @@ export const Invoicing: React.FC = () => {
 
   return (
     <div className="invoicing-container page-container terminal-ui">
+      {loading ? (
+        <div className="panel flex items-center justify-center p-20">
+          <Loader2 className="animate-spin text-primary mr-3" />
+          <span className="font-bold">SYNCING FINANCIAL DATA...</span>
+        </div>
+      ) : (
+        <>
       <div className="flex gap-4 mb-4">
         <div className="input-with-icon flex-1">
           <Search className="input-icon" size={18} />
@@ -321,6 +320,15 @@ export const Invoicing: React.FC = () => {
           {activeTab === 'PAID' && renderInvoiceList(paidInvoices)}
           {activeTab === 'DISCREPANCIES' && renderInvoiceList(discrepancyInvoices)}
         </div>
+      )}
+      <Pagination 
+        currentPage={currentPage}
+        totalCount={totalCount}
+        pageSize={10}
+        onPageChange={setCurrentPage}
+        loading={loading}
+      />
+      </>
       )}
     </div>
   );

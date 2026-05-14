@@ -1,16 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building, AlertTriangle, Zap, DollarSign, TrendingUp, Users, Activity, Clock, BarChart3, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Building, AlertTriangle, Zap, DollarSign, TrendingUp, Users, Activity, Clock, BarChart3, ArrowUpRight, ArrowDownRight, Sparkles, Loader2 } from 'lucide-react';
+import { analyticsService, inventoryService } from '../../services/api';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const [aiSummary, setAiSummary] = useState<any>(null);
+  const [loadingAi, setLoadingAi] = useState(true);
+  const [perf, setPerf] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>({ totalSaved: 0, totalWaste: 0, totalAlerts: 0, critAlerts: 0 });
+  const [loading, setLoading] = useState(true);
 
-  const branches = [
-    { name: 'Nizami Store', waste: '$1,240', saved: '$3,450', alerts: 12, crit: 3, actions: 45, score: 94, trend: 'up' },
-    { name: 'Fountain Square', waste: '$1,890', saved: '$2,100', alerts: 8, crit: 1, actions: 32, score: 88, trend: 'down' },
-    { name: 'White City', waste: '$2,340', saved: '$1,800', alerts: 15, crit: 5, actions: 28, score: 76, trend: 'down' },
-    { name: 'Gənclik Mall', waste: '$890', saved: '$4,200', alerts: 6, crit: 0, actions: 52, score: 97, trend: 'up' },
-  ];
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [summaryRes, statsRes, perfRes] = await Promise.all([
+        analyticsService.getDashboardSummary(),
+        analyticsService.getNetworkStats(),
+        analyticsService.getBranchPerformance()
+      ]);
+      setAiSummary(summaryRes.data);
+      setStats(statsRes.data);
+      setPerf(perfRes.data);
+    } catch (err) {
+      console.error('Failed to fetch dashboard data', err);
+    } finally {
+      setLoading(false);
+      setLoadingAi(false);
+    }
+  };
 
   const activities = [
     { time: '10:32', branch: 'Nizami', staff: 'Aysel Əliyeva', action: 'Completed task: Stock check - Dairy', type: 'success' },
@@ -20,8 +42,6 @@ export const AdminDashboard: React.FC = () => {
     { time: '09:15', branch: 'Gənclik', staff: 'Günel Hüseynova', action: 'Clocked in - Morning shift', type: 'info' },
     { time: '08:45', branch: 'Nizami', staff: 'Əli Həsənov', action: 'Received PO-001234 from Dairy Fresh Co', type: 'info' },
   ];
-
-  const totalSaved = 45230; const totalWaste = 12450; const totalAlerts = 47; const critAlerts = 12;
 
   return (
     <div className="dashboard-container page-container terminal-ui">
@@ -37,27 +57,60 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </header>
 
+      {/* AI Summary Section */}
+      <div className="panel border-primary" style={{ marginTop: 20, background: 'rgba(var(--primary-rgb), 0.05)' }}>
+        <div className="panel-header">
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--primary)' }}>
+            <Sparkles size={18} /> BRAVOOS AI INSIGHTS
+          </h2>
+          {loadingAi && <Loader2 className="animate-spin text-primary" size={18} />}
+        </div>
+        {aiSummary ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+            <div>
+              <p style={{ fontSize: '0.95rem', lineHeight: '1.5', margin: 0, fontWeight: 500 }}>{aiSummary.summary_text}</p>
+              <ul style={{ marginTop: 12, paddingLeft: 20, fontSize: '0.85rem' }}>
+                {aiSummary.actionable_items.map((item: string, i: number) => (
+                  <li key={i} style={{ marginBottom: 4 }}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-glass)', paddingLeft: 20 }}>
+              <div className="text-dim" style={{ fontSize: '0.65rem', fontWeight: 800, marginBottom: 4 }}>SYSTEM HEALTH</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: aiSummary.system_health_score > 80 ? 'var(--success)' : 'var(--warning)' }}>
+                {aiSummary.system_health_score}%
+              </div>
+              <div className="progress-bar" style={{ height: 6 }}>
+                <div className="progress" style={{ width: `${aiSummary.system_health_score}%`, background: 'var(--success)' }} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-muted">AI is analyzing current network operations...</p>
+        )}
+      </div>
+
       {/* KPIs */}
       <div className="kpi-grid" style={{ marginTop: 20 }}>
         <div className="kpi-card panel">
           <div className="kpi-header"><Zap size={20} className="text-primary" /><h3>NETWORK SAVED</h3></div>
-          <div className="kpi-value text-primary">${totalSaved.toLocaleString()}</div>
+          <div className="kpi-value text-primary">${stats.totalSaved.toLocaleString()}</div>
           <div className="kpi-trend positive"><ArrowUpRight size={14} /> +12% vs last month</div>
         </div>
         <div className="kpi-card panel">
           <div className="kpi-header"><DollarSign size={20} className="text-warning" /><h3>TOTAL WASTE</h3></div>
-          <div className="kpi-value text-warning">${totalWaste.toLocaleString()}</div>
+          <div className="kpi-value text-warning">${stats.totalWaste.toLocaleString()}</div>
           <div className="kpi-trend positive"><ArrowDownRight size={14} /> -8% vs last month</div>
         </div>
         <div className="kpi-card panel">
           <div className="kpi-header"><AlertTriangle size={20} className="text-danger" /><h3>ACTIVE ALERTS</h3></div>
-          <div className="kpi-value text-danger">{totalAlerts}</div>
-          <div className="kpi-trend negative">!!! {critAlerts} CRITICAL</div>
+          <div className="kpi-value text-danger">{stats.totalAlerts}</div>
+          <div className="kpi-trend negative">!!! {stats.critAlerts} CRITICAL</div>
         </div>
         <div className="kpi-card panel">
           <div className="kpi-header"><TrendingUp size={20} className="text-primary" /><h3>AVG FEFO SCORE</h3></div>
-          <div className="kpi-value">89%</div>
-          <div className="progress-bar mt-2"><div className="progress" style={{ width: '89%', background: 'var(--primary)' }} /></div>
+          <div className="kpi-value">{aiSummary?.system_health_score || 89}%</div>
+          <div className="progress-bar mt-2"><div className="progress" style={{ width: `${aiSummary?.system_health_score || 89}%`, background: 'var(--primary)' }} /></div>
         </div>
       </div>
 
@@ -73,7 +126,7 @@ export const AdminDashboard: React.FC = () => {
               <tr><th>Branch</th><th>Waste $</th><th>Saved $</th><th>Alerts</th><th>Actions</th><th>Score</th><th>Trend</th></tr>
             </thead>
             <tbody>
-              {branches.map((b, i) => (
+              {perf.map((b, i) => (
                 <tr key={i} onClick={() => navigate('/branches')} style={{ cursor: 'pointer' }}>
                   <td className="font-bold text-main">{b.name}</td>
                   <td className="text-warning" style={{ fontFamily: 'var(--font-mono)' }}>{b.waste}</td>
@@ -82,7 +135,7 @@ export const AdminDashboard: React.FC = () => {
                     <span>{b.alerts}</span>
                     {b.crit > 0 && <span className="text-danger" style={{ marginLeft: 6, fontWeight: 800 }}>({b.crit}⚠)</span>}
                   </td>
-                  <td className="text-muted">{b.actions} executed</td>
+                  <td className="text-muted">{b.actions || 0} executed</td>
                   <td>
                     <span style={{ fontWeight: 800, color: b.score >= 90 ? 'var(--success)' : b.score >= 80 ? 'var(--warning)' : 'var(--danger)' }}>{b.score}/100</span>
                   </td>
@@ -118,13 +171,13 @@ export const AdminDashboard: React.FC = () => {
         <div className="panel" style={{ padding: 16, textAlign: 'center' }}>
           <Users size={20} className="text-primary" style={{ marginBottom: 8 }} />
           <div className="text-dim" style={{ fontSize: '0.6rem', fontWeight: 800, marginBottom: 4 }}>TOTAL STAFF</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>48</div>
-          <div className="text-muted" style={{ fontSize: '0.7rem' }}>32 on shift now</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{stats.totalStaff || 0}</div>
+          <div className="text-muted" style={{ fontSize: '0.7rem' }}>{Math.ceil((stats.totalStaff || 0) * 0.7)} on shift now</div>
         </div>
         <div className="panel" style={{ padding: 16, textAlign: 'center' }}>
           <Building size={20} className="text-primary" style={{ marginBottom: 8 }} />
           <div className="text-dim" style={{ fontSize: '0.6rem', fontWeight: 800, marginBottom: 4 }}>BRANCHES</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>4</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{stats.totalBranches || 0}</div>
           <div className="text-success" style={{ fontSize: '0.7rem' }}>All operational</div>
         </div>
         <div className="panel" style={{ padding: 16, textAlign: 'center' }}>

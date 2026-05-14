@@ -46,42 +46,145 @@ const TREND_DATA = [
   { day: 'Thu', val: 150 }, { day: 'Fri', val: 220 }, { day: 'Sat', val: 193 }, { day: 'Sun', val: 170 },
 ];
 
+import { inventoryService, wasteService } from '../../services/api';
+import { Loader2 } from 'lucide-react';
+import { Pagination } from '../../components/Pagination';
+
 export const WasteLog: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [tab, setTab] = useState<'log' | 'today' | 'trends'>('log');
-  const [logs, setLogs] = useState(INIT_LOGS);
+  const [logs, setLogs] = useState<WasteEntry[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Form state
   const [scanMode, setScanMode] = useState(true);
   const [barcode, setBarcode] = useState('');
-  const [selProduct, setSelProduct] = useState(0);
-  const [selBatch, setSelBatch] = useState(0);
+  const [selProduct, setSelProduct] = useState<number | null>(null);
+  const [selBatch, setSelBatch] = useState<number | null>(null);
   const [qty, setQty] = useState(0);
   const [reason, setReason] = useState(0);
   const [notes, setNotes] = useState('');
   const [scanning, setScanning] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const product = PRODUCTS[selProduct];
-  const batch = product?.batches[selBatch];
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'today') {
+      fetchLogs(currentPage);
+    }
+  }, [currentPage, tab]);
+
+  const fetchInitialData = async () => {
+    setLoading(true);
+    try {
+      const [stockRes, wasteRes] = await Promise.all([
+        inventoryService.getStock({ page_size: 100 }), // Get some products for the dropdown
+        wasteService.getRecords({ page: 1 })
+      ]);
+      
+      const stockData = stockRes.data;
+      const productsData = (stockData.results || stockData).map((s: any) => ({
+        id: s.id,
+        name: s.product_name,
+        sku: s.sku,
+        cat: s.category_name,
+        cost: parseFloat(s.cost_price),
+        unit: s.unit,
+        batches: [
+          { id: s.sku, exp: s.expiry_date, qty: s.quantity, urgency: 'good' } // Simplified batch logic
+        ]
+      }));
+      setProducts(productsData);
+
+      const wasteData = wasteRes.data;
+      if (wasteData.results) {
+        setLogs(mapWasteLogs(wasteData.results));
+        setTotalCount(wasteData.count);
+      } else {
+        setLogs(mapWasteLogs(wasteData));
+        setTotalCount(wasteData.length);
+      }
+    } catch (err) {
+      console.error('Failed to fetch waste data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLogs = async (page = 1) => {
+    setLoading(true);
+    try {
+      const res = await wasteService.getRecords({ page });
+      const data = res.data;
+      if (data.results) {
+        setLogs(mapWasteLogs(data.results));
+        setTotalCount(data.count);
+      } else {
+        setLogs(mapWasteLogs(data));
+        setTotalCount(data.length);
+      }
+    } catch (err) {
+      console.error('Failed to fetch waste logs', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mapWasteLogs = (data: any[]): WasteEntry[] => {
+    return data.map((l: any) => ({
+      id: l.id,
+      date: new Date(l.created_at).toLocaleString(),
+      product: l.product_name,
+      qty: l.quantity,
+      reason: l.reason,
+      employee: l.reported_by_name || 'N/A',
+      loss: parseFloat(l.loss_value),
+      batch: l.batch_number || 'N/A'
+    }));
+  };
+
+  const product = selProduct !== null ? products[selProduct] : null;
+  const batch = product?.batches[selBatch ?? 0];
   const maxQty = batch?.qty ?? 0;
   const loss = (product?.cost ?? 0) * qty;
 
   const handleScan = () => {
     setScanning(true);
-    setTimeout(() => { setScanning(false); setSelProduct(0); setSelBatch(0); setQty(45); setBarcode('4901234567890'); }, 1500);
+    setTimeout(() => { 
+      setScanning(false); 
+      setSelProduct(0); 
+      setSelBatch(0); 
+      setQty(products[0]?.batches[0]?.qty || 10); 
+      setBarcode(products[0]?.sku || 'SCAN-001'); 
+    }, 1500);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!product || qty <= 0) return;
-    const entry: WasteEntry = {
-      id: Date.now(), date: new Date().toLocaleString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      product: product.name, qty, reason: REASONS[reason].split(' (')[0], employee: user?.name?.split(' ')[0] + ' ' + (user?.name?.split(' ')[1]?.[0] ?? '') + '.', loss, batch: batch?.id ?? '',
-    };
-    setLogs([entry, ...logs]);
-    setSubmitted(true);
-    setTimeout(() => { setSubmitted(false); setQty(0); setNotes(''); setBarcode(''); }, 2000);
+    try {
+      await wasteService.addRecord({
+        product: product.id,
+        quantity: qty,
+        reason: REASONS[reason].split(' (')[0],
+        notes,
+        loss_value: loss,
+        batch_number: batch?.id
+      });
+      setSubmitted(true);
+      fetchInitialData(); // Refresh logs
+      setTimeout(() => { setSubmitted(false); setQty(0); setNotes(''); setBarcode(''); }, 2000);
+    } catch (err) {
+      alert('Failed to log waste');
+    }
   };
 
   // Today's summary
@@ -240,6 +343,12 @@ export const WasteLog: React.FC = () => {
           {/* Category Summary */}
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header"><h2>📊 TODAY'S WASTE BY CATEGORY</h2></div>
+            {loading ? (
+              <div className="flex items-center justify-center p-10">
+                <Loader2 className="animate-spin text-primary mr-2" />
+                <span>SYNCING...</span>
+              </div>
+            ) : (
             <div className="table-responsive">
               <table className="terminal-table">
                 <thead><tr><th>Category</th><th>Qty</th><th>Loss $</th><th>% of Total</th></tr></thead>
@@ -260,6 +369,7 @@ export const WasteLog: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            )}
             <div style={{ textAlign: 'center', padding: '16px 0', borderTop: '1px solid var(--border-glass)', marginTop: 12 }}>
               <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--danger)' }}>TOTAL TODAY: ${totalLoss.toFixed(2)}</div>
               <div className="text-success" style={{ fontSize: '0.85rem', fontWeight: 700 }}>▼ 15% vs yesterday</div>
@@ -269,6 +379,13 @@ export const WasteLog: React.FC = () => {
           {/* Recent Logs Table */}
           <div className="panel">
             <div className="panel-header"><h2>📋 RECENT WASTE LOGS (LAST 7 DAYS)</h2></div>
+            {loading ? (
+              <div className="flex items-center justify-center p-10">
+                <Loader2 className="animate-spin text-primary mr-2" />
+                <span>SYNCING...</span>
+              </div>
+            ) : (
+            <>
             <div className="table-responsive">
               <table className="terminal-table">
                 <thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Batch</th><th>Reason</th><th>Employee</th><th>Loss</th></tr></thead>
@@ -287,6 +404,15 @@ export const WasteLog: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination 
+              currentPage={currentPage}
+              totalCount={totalCount}
+              pageSize={10}
+              onPageChange={setCurrentPage}
+              loading={loading}
+            />
+            </>
+            )}
           </div>
         </>
       )}

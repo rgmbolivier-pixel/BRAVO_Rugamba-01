@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, AlertTriangle, Plus, Edit2, Trash2, X, Package, Camera } from 'lucide-react';
+import { Search, AlertTriangle, Plus, Edit2, Trash2, X, Package, Camera, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { canAccessManagerOps, canAccessTransfers } from '../../utils/roleAccess';
+import { canAccessManagerOps } from '../../utils/roleAccess';
+import { inventoryService } from '../../services/api';
+import { Pagination } from '../../components/Pagination';
 import './Inventory.css';
 
 interface Product {
@@ -11,51 +13,110 @@ interface Product {
   location: string; status: 'In Stock' | 'Low Stock' | 'Expiring' | 'Expired';
 }
 
-const INIT_PRODUCTS: Product[] = [
-  { id: 1, name: '2% Milk', sku: 'DRY-001', category: 'Dairy', qty: 45, unit: 'units', cost: 2.50, expiry: '2024-12-17', location: 'Cooler A', status: 'Expiring' },
-  { id: 2, name: 'Whole Milk', sku: 'DRY-002', category: 'Dairy', qty: 32, unit: 'units', cost: 2.50, expiry: '2024-12-25', location: 'Cooler A', status: 'In Stock' },
-  { id: 3, name: 'Greek Yogurt', sku: 'DRY-003', category: 'Dairy', qty: 89, unit: 'units', cost: 3.00, expiry: '2024-12-28', location: 'Cooler A', status: 'In Stock' },
-  { id: 4, name: 'Cheddar Cheese', sku: 'DRY-004', category: 'Dairy', qty: 23, unit: 'units', cost: 5.00, expiry: '2024-12-20', location: 'Cooler B', status: 'Expiring' },
-  { id: 5, name: 'Lettuce', sku: 'PRD-001', category: 'Produce', qty: 45, unit: 'units', cost: 1.80, expiry: '2024-12-18', location: 'Cooler B', status: 'Expiring' },
-  { id: 6, name: 'Tomatoes', sku: 'PRD-002', category: 'Produce', qty: 67, unit: 'units', cost: 2.20, expiry: '2024-12-21', location: 'Cooler B', status: 'In Stock' },
-  { id: 7, name: 'Cucumbers', sku: 'PRD-003', category: 'Produce', qty: 34, unit: 'units', cost: 1.50, expiry: '2024-12-19', location: 'Cooler B', status: 'Expiring' },
-  { id: 8, name: 'Sourdough Bread', sku: 'BKR-001', category: 'Bakery', qty: 18, unit: 'units', cost: 4.50, expiry: '2024-12-19', location: 'Shelf A', status: 'Low Stock' },
-  { id: 9, name: 'Eggs (Dozen)', sku: 'DRY-005', category: 'Dairy', qty: 12, unit: 'dozen', cost: 3.50, expiry: '2024-12-30', location: 'Cooler A', status: 'Low Stock' },
-  { id: 10, name: 'Butter', sku: 'DRY-006', category: 'Dairy', qty: 8, unit: 'units', cost: 4.00, expiry: '2025-01-05', location: 'Cooler A', status: 'Low Stock' },
-];
-
 const EMPTY: Omit<Product, 'id'> = { name: '', sku: '', category: 'Dairy', qty: 0, unit: 'units', cost: 0, expiry: '', location: 'Cooler A', status: 'In Stock' };
 
 export const Inventory: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const role = user?.role ?? 'STAFF';
+  const role = user?.role ?? 'staff';
   const goPurchaseOrders = () => navigate(canAccessManagerOps(role) ? '/purchase-orders' : '/receiving');
 
-  const [products, setProducts] = useState<Product[]>(INIT_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<Omit<Product, 'id'>>(EMPTY);
   const [catFilter, setCatFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [scanMode, setScanMode] = useState(false);
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    fetchStock(currentPage);
+  }, [currentPage]);
+
+  const fetchStock = async (page = 1) => {
+    setLoading(true);
+    try {
+      const res = await inventoryService.getStock({ page });
+      const stockData = res.data;
+      let stock: any[] = [];
+      
+      if (stockData.results) {
+        stock = stockData.results;
+        setTotalCount(stockData.count);
+      } else {
+        stock = Array.isArray(stockData) ? stockData : [];
+        setTotalCount(stock.length);
+      }
+      
+      const mapped = stock.map((item: any) => {
+        // Simple status calculation logic for demo
+        const expiryDate = new Date(item.expiry_date);
+        const today = new Date();
+        const diffDays = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        let status: any = 'In Stock';
+        if (diffDays < 0) status = 'Expired';
+        else if (diffDays <= 7) status = 'Expiring';
+        else if (item.quantity <= 10) status = 'Low Stock';
+
+        return {
+          id: item.id,
+          name: item.product_name,
+          sku: item.sku,
+          category: item.category_name || 'General',
+          qty: item.quantity,
+          unit: item.unit,
+          cost: parseFloat(item.cost_price),
+          expiry: item.expiry_date,
+          location: item.storage_location,
+          status: status
+        };
+      });
+      setProducts(mapped);
+    } catch (err) {
+      console.error('Failed to fetch stock', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openAdd = () => { setForm(EMPTY); setEditId(null); setShowForm(true); setScanMode(false); };
   const openScan = () => { setForm(EMPTY); setEditId(null); setShowForm(true); setScanMode(true); };
   const openEdit = (p: Product) => { setForm({ name: p.name, sku: p.sku, category: p.category, qty: p.qty, unit: p.unit, cost: p.cost, expiry: p.expiry, location: p.location, status: p.status }); setEditId(p.id); setShowForm(true); setScanMode(false); };
-  const handleDelete = (id: number) => { if (confirm('Delete this product?')) setProducts(products.filter(p => p.id !== id)); };
-  const handleSave = () => {
-    if (!form.name || !form.sku) return;
-    if (editId) {
-      setProducts(products.map(p => p.id === editId ? { ...form, id: editId } : p));
-    } else {
-      setProducts([...products, { ...form, id: Date.now() }]);
+  
+  const handleDelete = async (id: number) => { 
+    if (confirm('Delete this product?')) {
+      try {
+        await inventoryService.deleteStock(id);
+        setProducts(products.filter(p => p.id !== id));
+      } catch (err) {
+        alert('Failed to delete item');
+      }
     }
-    setShowForm(false); setEditId(null); setScanMode(false);
+  };
+
+  const handleSave = async () => {
+    if (!form.name || !form.sku) return;
+    try {
+      if (editId) {
+        await inventoryService.updateStock(editId, form);
+      } else {
+        await inventoryService.addStock(form);
+      }
+      fetchStock();
+      setShowForm(false); setEditId(null); setScanMode(false);
+    } catch (err) {
+      alert('Failed to save product');
+    }
   };
 
   const simulateScan = () => {
-    setForm({ name: 'Organic Milk', sku: 'DRY-' + String(Math.floor(Math.random() * 900 + 100)), category: 'Dairy', qty: 48, unit: 'units', cost: 3.25, expiry: '2025-01-15', location: 'Cooler A', status: 'In Stock' });
+    setForm({ name: 'Organic Milk', sku: 'MILK-' + String(Math.floor(Math.random() * 900 + 100)), category: 'Dairy', qty: 48, unit: 'liters', cost: 3.25, expiry: '2025-01-15', location: 'Cooler A', status: 'In Stock' });
     setScanMode(false);
   };
 
@@ -138,48 +199,62 @@ export const Inventory: React.FC = () => {
           <h2><Package size={18} className="text-primary" style={{ display: 'inline', marginRight: 8 }} />ALL INVENTORY ({filtered.length} products)</h2>
         </div>
         <div className="table-responsive">
-          <table className="terminal-table">
-            <thead>
-              <tr><th>Product Name</th><th>SKU</th><th>Category</th><th>Qty</th><th>Unit</th><th>Cost</th><th>Expiry Date</th><th>Location</th><th>Status</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {filtered.map(p => (
-                <tr key={p.id} style={{ background: p.status === 'Expiring' ? 'rgba(255,0,60,0.04)' : p.status === 'Low Stock' ? 'rgba(250,204,21,0.04)' : 'transparent' }}>
-                  <td className="font-bold text-main">
-                    {p.name}
-                    {isAlertStatus(p.status) && <AlertTriangle size={12} className={p.status === 'Low Stock' ? 'text-warning' : 'text-danger'} style={{ marginLeft: 6, display: 'inline' }} />}
-                  </td>
-                  <td className="text-dim" style={{ fontFamily: 'var(--font-mono)' }}>{p.sku}</td>
-                  <td>{p.category}</td>
-                  <td className="font-bold" style={{ color: p.status === 'Low Stock' ? 'var(--warning)' : 'var(--text-main)' }}>{p.qty}</td>
-                  <td className="text-muted">{p.unit}</td>
-                  <td className="text-main" style={{ fontFamily: 'var(--font-mono)' }}>${p.cost.toFixed(2)}</td>
-                  <td className={p.status === 'Expiring' || p.status === 'Expired' ? 'text-warning' : 'text-muted'}>{p.expiry}</td>
-                  <td className="text-muted">{p.location}</td>
-                  <td>
-                    {(p.status === 'Expiring' || p.status === 'Expired') ? (
-                      <button onClick={() => navigate('/alerts')} style={{ background: 'rgba(255,0,60,0.1)', border: '1px solid var(--danger)', borderRadius: 4, padding: '4px 10px', color: 'var(--danger)', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <AlertTriangle size={12} /> {p.status.toUpperCase()}
-                      </button>
-                    ) : p.status === 'Low Stock' ? (
-                      <button onClick={goPurchaseOrders} style={{ background: 'rgba(250,204,21,0.1)', border: '1px solid var(--warning)', borderRadius: 4, padding: '4px 10px', color: 'var(--warning)', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <AlertTriangle size={12} /> LOW STOCK
-                      </button>
-                    ) : (
-                      <span className="text-success" style={{ fontWeight: 700, fontSize: '0.75rem' }}>● IN STOCK</span>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <button className="btn-icon small" title="Edit" onClick={() => openEdit(p)}><Edit2 size={14} /></button>
-                      <button className="btn-icon small text-danger" title="Delete" onClick={() => handleDelete(p.id)}><Trash2 size={14} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+              <Loader2 className="animate-spin text-primary" size={32} />
+              <span style={{ marginLeft: 12, fontWeight: 700 }}>LOADING REAL-TIME DATA...</span>
+            </div>
+          ) : (
+            <table className="terminal-table">
+              <thead>
+                <tr><th>Product Name</th><th>SKU</th><th>Category</th><th>Qty</th><th>Unit</th><th>Cost</th><th>Expiry Date</th><th>Location</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                {filtered.map(p => (
+                  <tr key={p.id} style={{ background: p.status === 'Expiring' ? 'rgba(255,0,60,0.04)' : p.status === 'Low Stock' ? 'rgba(250,204,21,0.04)' : 'transparent' }}>
+                    <td className="font-bold text-main">
+                      {p.name}
+                      {isAlertStatus(p.status) && <AlertTriangle size={12} className={p.status === 'Low Stock' ? 'text-warning' : 'text-danger'} style={{ marginLeft: 6, display: 'inline' }} />}
+                    </td>
+                    <td className="text-dim" style={{ fontFamily: 'var(--font-mono)' }}>{p.sku}</td>
+                    <td>{p.category}</td>
+                    <td className="font-bold" style={{ color: p.status === 'Low Stock' ? 'var(--warning)' : 'var(--text-main)' }}>{p.qty}</td>
+                    <td className="text-muted">{p.unit}</td>
+                    <td className="text-main" style={{ fontFamily: 'var(--font-mono)' }}>${p.cost.toFixed(2)}</td>
+                    <td className={p.status === 'Expiring' || p.status === 'Expired' ? 'text-warning' : 'text-muted'}>{p.expiry}</td>
+                    <td className="text-muted">{p.location}</td>
+                    <td>
+                      {(p.status === 'Expiring' || p.status === 'Expired') ? (
+                        <button onClick={() => navigate('/alerts')} style={{ background: 'rgba(255,0,60,0.1)', border: '1px solid var(--danger)', borderRadius: 4, padding: '4px 10px', color: 'var(--danger)', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <AlertTriangle size={12} /> {p.status.toUpperCase()}
+                        </button>
+                      ) : p.status === 'Low Stock' ? (
+                        <button onClick={goPurchaseOrders} style={{ background: 'rgba(250,204,21,0.1)', border: '1px solid var(--warning)', borderRadius: 4, padding: '4px 10px', color: 'var(--warning)', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <AlertTriangle size={12} /> LOW STOCK
+                        </button>
+                      ) : (
+                        <span className="text-success" style={{ fontWeight: 700, fontSize: '0.75rem' }}>● IN STOCK</span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button className="btn-icon small" title="Edit" onClick={() => openEdit(p)}><Edit2 size={14} /></button>
+                        <button className="btn-icon small text-danger" title="Delete" onClick={() => handleDelete(p.id)}><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
+        <Pagination 
+          currentPage={currentPage}
+          totalCount={totalCount}
+          pageSize={10}
+          onPageChange={setCurrentPage}
+          loading={loading}
+        />
       </div>
 
       <div className="panel border-danger">

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Search, Download, Filter, Plus, MessageSquare, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronUp, UserCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Download, Filter, Plus, MessageSquare, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronUp, UserCheck, Loader2 } from 'lucide-react';
+import { userService, taskService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import './StaffActivities.css';
 
 type StaffStatus = 'ON_SHIFT' | 'OFF_SHIFT' | 'ON_BREAK';
@@ -22,51 +24,68 @@ interface StaffMember {
   issueReported?: IssueReport;
 }
 
+import { Pagination } from '../../components/Pagination';
+
 export const StaffActivities: React.FC = () => {
+  const { user: currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ON_SHIFT' | 'OFF_SHIFT'>('ALL');
-  const [expandedStaff, setExpandedStaff] = useState<string[]>(['1', '2']);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [expandedStaff, setExpandedStaff] = useState<string[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignTarget, setAssignTarget] = useState('');
-  const [pendingAction, setPendingAction] = useState<{ staffId: string; type: 'break' | 'issue' } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const staffMembers: StaffMember[] = [
-    {
-      id: '1', name: 'Sarah Lee', role: 'Floor Staff', status: 'ON_SHIFT', clockInTime: '7:02 AM',
-      tasks: [
-        { id: '1', name: 'Stock Check - Dairy', status: 'COMPLETED', time: '8:30 AM' },
-        { id: '2', name: 'Receiving - PO-001234', status: 'IN_PROGRESS' },
-        { id: '3', name: 'Waste Log - Bakery', status: 'PENDING', time: 'Due 12:00 PM' }
-      ],
-      actionsTaken: [
-        { description: 'Logged waste: 45 units ($112.50)', time: '9:15 AM' },
-        { description: 'Applied discount: 30% on 2% Milk', time: '10:00 AM' }
-      ],
-      breakRequest: { time: '10:30 AM', status: 'APPROVED' }
-    },
-    {
-      id: '2', name: 'Mike Johnson', role: 'Floor Staff', status: 'ON_SHIFT', clockInTime: '8:15 AM',
-      tasks: [
-        { id: '1', name: 'FEFO Rotation - Dairy', status: 'COMPLETED', time: '9:00 AM' },
-        { id: '2', name: 'Waste Log - Meat Section', status: 'COMPLETED', time: '10:00 AM' }
-      ],
-      actionsTaken: [
-        { description: 'Completed transfer: 30 units Milk to Uptown', time: '9:30 AM' },
-        { description: 'Logged waste: 8 units ($24.00)', time: '10:15 AM' }
-      ],
-      issueReported: { issue: 'Cooler A temperature (42°F)', status: 'IN_REVIEW' }
-    },
-    {
-      id: '3', name: 'John Davis', role: 'Floor Staff', status: 'ON_SHIFT', clockInTime: '7:30 AM',
-      tasks: [{ id: '1', name: 'Shelf Restock - Produce', status: 'IN_PROGRESS' }],
-      actionsTaken: [],
-      breakRequest: { time: '11:30 AM', status: 'PENDING' }
-    },
-    {
-      id: '4', name: 'Lisa Wong', role: 'Floor Staff', status: 'OFF_SHIFT',
-      tasks: [], actionsTaken: []
+  useEffect(() => {
+    fetchData(currentPage);
+  }, [currentPage]);
+
+  const fetchData = async (page = 1) => {
+    setLoading(true);
+    try {
+      const [usersRes, tasksRes] = await Promise.all([
+        userService.getUsers({ page }),
+        taskService.getTasks()
+      ]);
+
+      const usersData = usersRes.data;
+      let users: any[] = [];
+      if (usersData.results) {
+        users = usersData.results;
+        setTotalCount(usersData.count);
+      } else {
+        users = Array.isArray(usersData) ? usersData : [];
+        setTotalCount(users.length);
+      }
+      
+      const tasks = Array.isArray(tasksRes.data) ? tasksRes.data : (tasksRes.data.results || []);
+
+      const mapped = users.map((u: any) => ({
+        id: String(u.id),
+        name: `${u.first_name} ${u.last_name}`,
+        role: u.role.toUpperCase(),
+        status: u.status === 'active' ? 'ON_SHIFT' : 'OFF_SHIFT',
+        clockInTime: u.last_login ? new Date(u.last_login).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+        tasks: tasks.filter((t: any) => String(t.assigned_to) === String(u.id)).map((t: any) => ({
+          id: String(t.id),
+          name: t.title,
+          status: t.status.toUpperCase() as any,
+          time: t.due_date ? new Date(t.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'
+        })),
+        actionsTaken: [], // Would need a separate endpoint for activity logs
+      }));
+
+      setStaffMembers(mapped);
+    } catch (err) {
+      console.error('Failed to fetch staff data', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const onShiftCount = staffMembers.filter(s => s.status === 'ON_SHIFT').length;
   const tasksCompleted = staffMembers.reduce((a, s) => a + s.tasks.filter(t => t.status === 'COMPLETED').length, 0);
@@ -89,11 +108,18 @@ export const StaffActivities: React.FC = () => {
 
   return (
     <div className="staff-activities-container page-container terminal-ui">
+      {loading ? (
+        <div className="panel flex items-center justify-center p-20">
+          <Loader2 className="animate-spin text-primary mr-3" />
+          <span className="font-bold">SYNCING STAFF DATA...</span>
+        </div>
+      ) : (
+        <>
       <header className="page-header glow-panel mb-4">
         <div className="header-stats w-full">
           <div className="stat-group">
             <span className="stat-label">BRANCH</span>
-            <span className="stat-value text-bright">DOWNTOWN STORE</span>
+            <span className="stat-value text-bright">{staffMembers[0]?.branch_name || 'BRAVO STORE'}</span>
           </div>
           <div className="stat-group">
             <span className="stat-label">ON SHIFT</span>
@@ -118,8 +144,8 @@ export const StaffActivities: React.FC = () => {
         </div>
         <select className="terminal-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}>
           <option value="ALL">Status: All</option>
-          <option value="ON_SHIFT">On Shift</option>
-          <option value="OFF_SHIFT">Off Shift</option>
+          <option value="ACTIVE">Active</option>
+          <option value="INACTIVE">Inactive</option>
         </select>
         <button className="btn-secondary"><Download size={14} /> EXPORT</button>
       </div>
@@ -148,7 +174,7 @@ export const StaffActivities: React.FC = () => {
                     <div className="staff-card-meta">
                       <span className={`shift-badge ${staff.status === 'ON_SHIFT' ? 'shift-on' : staff.status === 'ON_BREAK' ? 'shift-break' : 'shift-off'}`}>
                         <span className={`status-pip ${staff.status === 'ON_SHIFT' ? 'pip-on' : staff.status === 'ON_BREAK' ? 'pip-break' : 'pip-off'}`}></span>
-                        {staff.status === 'ON_SHIFT' ? `ON SHIFT since ${staff.clockInTime}` : staff.status === 'ON_BREAK' ? 'ON BREAK' : 'OFF SHIFT'}
+                        {staff.status === 'ON_SHIFT' ? `ON SHIFT (Last login: ${staff.clockInTime})` : staff.status === 'ON_BREAK' ? 'ON BREAK' : 'OFF SHIFT'}
                       </span>
                       <div className="staff-quick-stats">
                         <span className="text-success text-xs">{staff.tasks.filter(t => t.status === 'COMPLETED').length} done</span>
@@ -180,33 +206,7 @@ export const StaffActivities: React.FC = () => {
                         {/* Actions */}
                         <div className="detail-col">
                           <h4 className="detail-heading">Actions Taken Today</h4>
-                          {staff.actionsTaken.length === 0
-                            ? <span className="text-dim text-xs">No actions yet</span>
-                            : staff.actionsTaken.map((a, i) => (
-                              <div key={i} className="action-mini-row">
-                                <span className="text-primary">•</span>
-                                <span className="text-muted text-xs">{a.description}</span>
-                                {a.time && <span className="text-dim text-xs ml-auto">{a.time}</span>}
-                              </div>
-                            ))
-                          }
-
-                          {staff.breakRequest && (
-                            <div className="mini-badge-row mt-2">
-                              <span className="text-dim text-xs">Break:</span>
-                              <span className={`badge ${staff.breakRequest.status === 'APPROVED' ? 'badge-success' : staff.breakRequest.status === 'DENIED' ? 'badge-danger' : 'badge-warning'}`}>
-                                {staff.breakRequest.status} ({staff.breakRequest.time})
-                              </span>
-                            </div>
-                          )}
-
-                          {staff.issueReported && (
-                            <div className="mini-badge-row mt-2">
-                              <span className="text-dim text-xs">Issue:</span>
-                              <span className="text-warning text-xs">{staff.issueReported.issue}</span>
-                              <span className="badge badge-warning">{staff.issueReported.status.replace('_', ' ')}</span>
-                            </div>
-                          )}
+                          <span className="text-dim text-xs">Syncing logs...</span>
                         </div>
                       </div>
 
@@ -226,6 +226,14 @@ export const StaffActivities: React.FC = () => {
               );
             })}
           </div>
+          
+          <Pagination 
+            currentPage={currentPage}
+            totalCount={totalCount}
+            pageSize={10}
+            onPageChange={setCurrentPage}
+            loading={loading}
+          />
         </div>
 
         {/* Side Panels */}
@@ -270,8 +278,8 @@ export const StaffActivities: React.FC = () => {
                 <span className="text-success">{tasksCompleted}</span>
               </div>
               <div className="summary-row">
-                <span>Waste logged</span>
-                <span className="text-warning">53u ($136.50)</span>
+                <span>Waste logged (Est)</span>
+                <span className="text-warning">Syncing...</span>
               </div>
               <div className="summary-row">
                 <span>Actions taken</span>
@@ -279,7 +287,7 @@ export const StaffActivities: React.FC = () => {
               </div>
               <div className="summary-row">
                 <span>Issues open</span>
-                <span className="text-warning">1</span>
+                <span className="text-warning">0</span>
               </div>
             </div>
           </div>
@@ -303,6 +311,8 @@ export const StaffActivities: React.FC = () => {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* Assign Task Modal */}
       {showAssignModal && (

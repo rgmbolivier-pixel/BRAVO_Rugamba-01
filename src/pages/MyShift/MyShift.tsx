@@ -40,11 +40,14 @@ interface ShiftTask {
   managerNote?: string;
 }
 
+import { taskService } from '../../services/api';
+import { Pagination } from '../../components/Pagination';
+
 export const MyShift: React.FC = () => {
   const { user } = useAuth();
   const [clockStatus, setClockStatus] = useState<ClockStatus>('IN');
-  const [clockInTime] = useState('7:02 AM');
-  const [elapsed, setElapsed] = useState('4h 15m');
+  const [clockInTime, setClockInTime] = useState('7:02 AM');
+  const [elapsed, setElapsed] = useState('0h 0m');
   const [showBreakModal, setShowBreakModal] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [showClockOutModal, setShowClockOutModal] = useState(false);
@@ -54,73 +57,53 @@ export const MyShift: React.FC = () => {
   const [issueDesc, setIssueDesc] = useState('');
   const [issuePriority, setIssuePriority] = useState('Medium');
   const [activeTaskTab, setActiveTaskTab] = useState<'PENDING' | 'COMPLETED'>('PENDING');
+  const [tasks, setTasks] = useState<ShiftTask[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const [breakRequests, setBreakRequests] = useState<BreakRequest[]>([
-    {
-      id: '1',
-      time: 'Dec 18, 10:30 AM',
-      duration: '30 minutes',
-      status: 'APPROVED',
-      response: 'Approved, take 30 minutes',
-      respondedBy: 'Jane Smith',
-      respondedAt: '10:32 AM'
-    }
-  ]);
+  const [breakRequests, setBreakRequests] = useState<BreakRequest[]>([]);
+  const [issueReports, setIssueReports] = useState<IssueReport[]>([]);
 
-  const [issueReports, setIssueReports] = useState<IssueReport[]>([
-    {
-      id: '1',
-      type: 'Temperature Issue',
-      issue: 'Cooler A temperature showing 42°F (should be 38°F)',
-      priority: 'High',
-      reportedAt: 'Dec 18, 9:15 AM',
-      status: 'IN_REVIEW',
-      response: 'Checking with maintenance, will update you',
-      respondedBy: 'Manager'
+  useEffect(() => {
+    if (user?.id) {
+      fetchTasks(currentPage);
     }
-  ]);
+  }, [user, currentPage]);
 
-  const tasks: ShiftTask[] = [
-    {
-      id: '1',
-      title: 'Stock Check - Dairy Cooler',
-      priority: 'HIGH',
-      status: 'COMPLETED',
-      assignedBy: 'Jane Smith',
-      dueTime: '11:00 AM',
-      completedAt: '8:30 AM',
-      managerNote: 'Good work! Found 2 expiring items'
-    },
-    {
-      id: '2',
-      title: 'Receiving - PO-001234',
-      priority: 'HIGH',
-      status: 'IN_PROGRESS',
-      assignedBy: 'Jane Smith',
-      dueTime: '10:30 AM',
-      timeLeft: '1h 15m',
-      instructions: 'Vendor: Dairy Fresh Co | Items: 200u Milk, 150u Cheese'
-    },
-    {
-      id: '3',
-      title: 'Waste Logging - Bakery Section',
-      priority: 'MEDIUM',
-      status: 'PENDING',
-      assignedBy: 'System (auto)',
-      dueTime: '12:00 PM',
-      timeLeft: '2h 45m',
-      instructions: 'Items expiring today: 15 units Sourdough Bread'
-    },
-    {
-      id: '4',
-      title: 'Shelf Restock - Produce Aisle',
-      priority: 'LOW',
-      status: 'PENDING',
-      assignedBy: 'Mike Johnson',
-      dueTime: '2:00 PM',
-      timeLeft: '4h 45m'
+  const fetchTasks = async (page = 1) => {
+    setLoading(true);
+    try {
+      const res = await taskService.getTasks({ assigned_to: user?.id, page });
+      const data = res.data;
+      let results: any[] = [];
+      
+      if (data.results) {
+        results = data.results;
+        setTotalCount(data.count);
+      } else {
+        results = Array.isArray(data) ? data : [];
+        setTotalCount(results.length);
+      }
+      
+      const mapped: ShiftTask[] = results.map((t: any) => ({
+        id: String(t.id),
+        title: t.title,
+        priority: t.priority.toUpperCase() as any,
+        status: t.status.toUpperCase().replace(' ', '_') as any,
+        assignedBy: t.created_by_name || 'System',
+        dueTime: t.due_date ? new Date(t.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+        instructions: t.description
+      }));
+      setTasks(mapped);
+    } catch (err) {
+      console.error('Failed to fetch user tasks', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const pendingTasks = tasks.filter(t => t.status !== 'COMPLETED');
   const completedTasks = tasks.filter(t => t.status === 'COMPLETED');
@@ -293,6 +276,14 @@ export const MyShift: React.FC = () => {
               </div>
             ))}
           </div>
+          
+          <Pagination 
+            currentPage={currentPage}
+            totalCount={totalCount}
+            pageSize={10}
+            onPageChange={setCurrentPage}
+            loading={loading}
+          />
         </div>
 
         {/* Side Panels */}

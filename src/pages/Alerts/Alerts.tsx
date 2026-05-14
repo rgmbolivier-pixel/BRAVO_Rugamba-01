@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { canAccessManagerOps, canAccessTransfers } from '../../utils/roleAccess';
 import { formatShortDate } from '../../utils/formatDate';
+import { inventoryService } from '../../services/api';
+import { Pagination } from '../../components/Pagination';
 import './Alerts.css';
 
 interface AlertItem {
@@ -20,7 +22,7 @@ export const Alerts: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const role = user?.role ?? 'STAFF';
+  const role = user?.role ?? 'staff';
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -32,15 +34,63 @@ export const Alerts: React.FC = () => {
   const [transferBranches, setTransferBranches] = useState<Record<string, string>>({});
   const [actionResults, setActionResults] = useState<Record<string, string>>({});
 
-  const [alerts] = useState<AlertItem[]>([
-    { id: '1', name: '2% MILK', sku: 'MK-2001', category: 'Dairy', quantity: 45, location: 'Cooler A', expiryDate: '2026-05-14T22:00:00.000Z', lossAmount: 135, batch: 'L2401', level: 'CRITICAL', recommendation: '30% discount predicted to sell 90% before expiry. Transfer 15 units to Uptown (high demand).', confidence: 94, unitCost: 2.50, aiDiscount: 30, aiTransferBranch: 'Uptown Store', aiTransferQty: 15 },
-    { id: '2', name: 'CHEDDAR CHEESE', sku: 'CH-3042', category: 'Dairy', quantity: 23, location: 'Cooler B', expiryDate: '2026-05-16T12:00:00.000Z', lossAmount: 115, batch: 'C2392', level: 'CRITICAL', recommendation: '15% discount or transfer to Uptown (high demand). Transfer saves 100% of value.', confidence: 88, unitCost: 5.00, aiDiscount: 15, aiTransferBranch: 'Uptown Store', aiTransferQty: 10 },
-    { id: '3', name: 'SOURDOUGH BREAD', sku: 'BR-1005', category: 'Bakery', quantity: 67, location: 'Shelf 3', expiryDate: '2026-05-19T08:00:00.000Z', lossAmount: 100, batch: 'B2410', level: 'HIGH', recommendation: 'BOGO deal predicted to clear 85%. Transfer 20 units to Fountain Square branch.', confidence: 82, unitCost: 4.50, aiDiscount: 50, aiTransferBranch: 'Fountain Square', aiTransferQty: 20 },
-    { id: '4', name: 'GALA APPLES', sku: 'FR-5002', category: 'Produce', quantity: 120, location: 'Aisle 2', expiryDate: '2026-06-01T18:00:00.000Z', lossAmount: 240, batch: 'A9912', level: 'MEDIUM', recommendation: '10% volume discount recommended. Transfer 40 units to White City branch.', confidence: 76, unitCost: 2.00, aiDiscount: 10, aiTransferBranch: 'White City', aiTransferQty: 40 },
-  ]);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const refreshData = useCallback(() => { setIsRefreshing(true); setTimeout(() => setIsRefreshing(false), 800); }, []);
-  useEffect(() => { const i = setInterval(() => { setClock(Date.now()); refreshData(); }, 30000); return () => clearInterval(i); }, [refreshData]);
+  const fetchAlerts = useCallback(async (page = 1) => {
+    try {
+      const res = await inventoryService.getAlerts({ page });
+      const data = res.data;
+      let results: any[] = [];
+      
+      if (data.results) {
+        results = data.results;
+        setTotalCount(data.count);
+      } else {
+        results = Array.isArray(data) ? data : [];
+        setTotalCount(results.length);
+      }
+      
+      const mapped: AlertItem[] = results.map((a: any) => ({
+        id: String(a.id),
+        name: a.product_name || 'Unknown Product',
+        sku: a.sku || 'N/A',
+        category: a.category_name || 'General',
+        quantity: a.quantity_at_risk || 0,
+        location: a.branch_name || 'Warehouse',
+        expiryDate: a.expiry_date || new Date().toISOString(),
+        lossAmount: parseFloat(a.estimated_loss || '0'),
+        batch: a.stock_item ? `BATCH-${a.stock_item}` : 'N/A',
+        level: (a.alert_level || 'MEDIUM').toUpperCase() as any,
+        recommendation: a.ai_recommendation || 'No recommendation available.',
+        confidence: a.confidence_score || 0,
+        unitCost: parseFloat(a.estimated_loss || '0') / (a.quantity_at_risk || 1),
+        aiDiscount: a.recommended_action === 'DISCOUNT' ? 25 : 0,
+        aiTransferBranch: a.recommended_action === 'TRANSFER' ? 'Downtown Store' : '',
+        aiTransferQty: a.quantity_at_risk || 0
+      }));
+      setAlerts(mapped);
+    } catch (err) {
+      console.error('Failed to fetch alerts', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const refreshData = useCallback(() => { 
+    setIsRefreshing(true); 
+    fetchAlerts(currentPage).then(() => setIsRefreshing(false));
+  }, [fetchAlerts, currentPage]);
+
+  useEffect(() => { 
+    fetchAlerts(currentPage);
+    const i = setInterval(() => { setClock(Date.now()); refreshData(); }, 30000); 
+    return () => clearInterval(i); 
+  }, [fetchAlerts, refreshData, currentPage]);
 
   const getLevelColor = (l: string) => l === 'CRITICAL' ? 'var(--danger)' : l === 'HIGH' ? 'var(--warning)' : l === 'MEDIUM' ? '#ff8800' : '#00aaff';
   const getTimeRemaining = (d: string) => { const diff = new Date(d).getTime() - clock; const days = Math.floor(diff / 864e5); const hrs = Math.floor((diff % 864e5) / 36e5); return days > 0 ? `${days}d ${hrs}h left` : `${hrs}h left`; };
@@ -53,7 +103,34 @@ export const Alerts: React.FC = () => {
 
   const toggleExpand = (id: string) => { setExpandedId(expandedId === id ? null : id); };
 
-  const applyAction = (id: string, action: string) => { setActionResults({ ...actionResults, [id]: action }); };
+  const applyAction = async (id: string, actionType: string) => { 
+    try {
+      const alert = alerts.find(a => a.id === id);
+      if (!alert) return;
+
+      let payload: any = {};
+      let successMsg = '';
+
+      if (actionType === 'discount') {
+        const pct = getDiscount(alert);
+        payload = { discount_pct: pct };
+        successMsg = `✅ ${pct}% discount applied to ${alert.name}`;
+      } else if (actionType === 'transfer') {
+        const branch = getTransferBranch(alert);
+        const qty = getTransferQty(alert);
+        payload = { target_branch: branch, transfer_qty: qty };
+        successMsg = `✅ ${qty} units of ${alert.name} transferred to ${branch}`;
+      } else if (actionType === 'donate') {
+        successMsg = `✅ ${alert.name} donated to local food bank`;
+      }
+
+      await inventoryService.resolveAlert(id, actionType, payload);
+      setActionResults({ ...actionResults, [id]: successMsg });
+      setTimeout(fetchAlerts, 2000);
+    } catch (err) {
+      alert('Failed to apply action');
+    }
+  };
 
   return (
     <div className="alerts-container page-container terminal-ui">
@@ -61,23 +138,23 @@ export const Alerts: React.FC = () => {
       <div className="stats-bar mb-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="stat-card glass">
           <div className="stat-icon-bg critical"><AlertTriangle size={24} /></div>
-          <div className="stat-info"><span className="stat-label">{t('alerts.critical')}</span><span className="stat-value text-danger">3</span></div>
+          <div className="stat-info"><span className="stat-label">{t('alerts.critical')}</span><span className="stat-value text-danger">{alerts.filter(a => a.level === 'CRITICAL').length}</span></div>
           <div className="stat-trend negative">MUST ACT NOW</div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stat-card glass">
           <div className="stat-icon-bg warning"><Clock size={24} /></div>
-          <div className="stat-info"><span className="stat-label">{t('alerts.high')}</span><span className="stat-value text-warning">5</span></div>
+          <div className="stat-info"><span className="stat-label">{t('alerts.high')}</span><span className="stat-value text-warning">{alerts.filter(a => a.level === 'HIGH').length}</span></div>
           <div className="stat-trend">NEXT 7 DAYS</div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stat-card glass">
           <div className="stat-icon-bg secondary"><DollarSign size={24} /></div>
-          <div className="stat-info"><span className="stat-label">{t('dashboard.at_risk_value')}</span><span className="stat-value text-bright">$1,240</span></div>
-          <div className="stat-trend positive">↑ 12% vs LW</div>
+          <div className="stat-info"><span className="stat-label">{t('dashboard.at_risk_value')}</span><span className="stat-value text-bright">${alerts.reduce((sum, a) => sum + a.lossAmount, 0).toLocaleString()}</span></div>
+          <div className="stat-trend positive">TOTAL VALUE AT RISK</div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stat-card glass">
           <div className="stat-icon-bg primary"><TrendingUp size={24} /></div>
-          <div className="stat-info"><span className="stat-label">RESOLUTION RATE</span><span className="stat-value text-primary">82%</span></div>
-          <div className="stat-trend positive">WELL DONE</div>
+          <div className="stat-info"><span className="stat-label">AI CONFIDENCE</span><span className="stat-value text-primary">{alerts.length > 0 ? Math.round(alerts.reduce((sum, a) => sum + a.confidence, 0) / alerts.length) : 0}%</span></div>
+          <div className="stat-trend positive">AVG SCORE</div>
         </motion.div>
       </div>
 
@@ -86,6 +163,9 @@ export const Alerts: React.FC = () => {
         <div className="search-group"><Search size={18} className="text-dim" /><input type="text" placeholder={t('common.search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
         <div className="filter-group">
           <div className="filter-item"><Filter size={16} className="text-dim" /><select value={filterLevel} onChange={e => setFilterLevel(e.target.value)}><option value="ALL">ALL LEVELS</option><option value="CRITICAL">CRITICAL</option><option value="HIGH">HIGH</option><option value="MEDIUM">MEDIUM</option></select></div>
+          <button className="btn-primary small" onClick={async () => { setIsRefreshing(true); try { await inventoryService.generateAlerts(); fetchAlerts(1); } finally { setIsRefreshing(false); } }}>
+            <Zap size={16} /> RUN AI ANALYSIS
+          </button>
           <button className="refresh-btn" onClick={refreshData}><RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} /></button>
           <button type="button" className="btn-secondary small" onClick={() => navigate(canAccessManagerOps(role) ? '/analytics' : '/inventory')}><Download size={16} /> {t('common.export')}</button>
         </div>
@@ -170,7 +250,7 @@ export const Alerts: React.FC = () => {
                           <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: 6 }}>
                             New: ${(alert.unitCost * (1 - getDiscount(alert) / 100)).toFixed(2)}/unit — Revenue: ${(alert.quantity * alert.unitCost * (1 - getDiscount(alert) / 100)).toFixed(2)}
                           </div>
-                          <button className="btn-primary w-full" style={{ marginTop: 10 }} onClick={() => applyAction(alert.id, `✅ ${getDiscount(alert)}% discount applied to ${alert.name}`)}>
+                          <button className="btn-primary w-full" style={{ marginTop: 10 }} onClick={() => applyAction(alert.id, 'discount')}>
                             <PercentIcon size={14} /> APPLY {getDiscount(alert)}% DISCOUNT
                           </button>
                         </div>
@@ -199,7 +279,7 @@ export const Alerts: React.FC = () => {
                           <div className="text-muted" style={{ fontSize: '0.75rem', marginBottom: 10 }}>
                             <MapPin size={12} style={{ display: 'inline' }} /> Transferring {getTransferQty(alert)} of {alert.quantity} units to {getTransferBranch(alert)}
                           </div>
-                          <button className="btn-secondary w-full" style={{ borderColor: 'var(--warning)', color: 'var(--warning)' }} onClick={() => applyAction(alert.id, `✅ ${getTransferQty(alert)} units of ${alert.name} transferred to ${getTransferBranch(alert)}`)}>
+                          <button className="btn-secondary w-full" style={{ borderColor: 'var(--warning)', color: 'var(--warning)' }} onClick={() => applyAction(alert.id, 'transfer')}>
                             <ArrowRightLeft size={14} /> TRANSFER {getTransferQty(alert)} UNITS
                           </button>
                         </div>
@@ -211,7 +291,7 @@ export const Alerts: React.FC = () => {
                             <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>DONATE TO FOOD BANK</span>
                           </div>
                           <div className="text-muted" style={{ fontSize: '0.8rem', marginBottom: 10 }}>Tax deduction: ~${(alert.quantity * alert.unitCost * 0.3).toFixed(2)} • Reduces waste by {alert.quantity} units</div>
-                          <button className="btn-secondary w-full" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => applyAction(alert.id, `✅ ${alert.name} donated to local food bank`)}>
+                          <button className="btn-secondary w-full" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => applyAction(alert.id, 'donate')}>
                             <Heart size={14} /> DONATE ALL {alert.quantity} UNITS
                           </button>
                         </div>
@@ -224,6 +304,14 @@ export const Alerts: React.FC = () => {
           ))}
         </AnimatePresence>
       </div>
+
+      <Pagination 
+        currentPage={currentPage}
+        totalCount={totalCount}
+        pageSize={10}
+        onPageChange={setCurrentPage}
+        loading={loading}
+      />
 
       <style>{`
         .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }

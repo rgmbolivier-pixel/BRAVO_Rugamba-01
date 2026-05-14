@@ -57,32 +57,32 @@ function App() {
             
             {/* --- Role matrix (see src/utils/roleAccess.ts) --- */}
             {/* HQ Admin only */}
-            <Route path="/branches" element={<ProtectedRoute allowedRoles={['ADMIN']}><Layout><Branches /></Layout></ProtectedRoute>} />
-            <Route path="/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><Layout><Users /></Layout></ProtectedRoute>} />
-            <Route path="/invoicing" element={<ProtectedRoute allowedRoles={['ADMIN']}><Layout><Invoicing /></Layout></ProtectedRoute>} />
-            <Route path="/all-activities" element={<ProtectedRoute allowedRoles={['ADMIN']}><Layout><AllActivities /></Layout></ProtectedRoute>} />
+            <Route path="/branches" element={<ProtectedRoute allowedRoles={['admin']}><Layout><Branches /></Layout></ProtectedRoute>} />
+            <Route path="/users" element={<ProtectedRoute allowedRoles={['admin']}><Layout><Users /></Layout></ProtectedRoute>} />
+            <Route path="/invoicing" element={<ProtectedRoute allowedRoles={['admin']}><Layout><Invoicing /></Layout></ProtectedRoute>} />
+            <Route path="/all-activities" element={<ProtectedRoute allowedRoles={['admin']}><Layout><AllActivities /></Layout></ProtectedRoute>} />
 
             {/* Admin + Store Manager (no floor staff) */}
-            <Route path="/analytics" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}><Layout><Analytics /></Layout></ProtectedRoute>} />
-            <Route path="/vendors" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}><Layout><Vendors /></Layout></ProtectedRoute>} />
-            <Route path="/purchase-orders" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}><Layout><PurchaseOrders /></Layout></ProtectedRoute>} />
-            <Route path="/transfers" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}><Layout><Transfers /></Layout></ProtectedRoute>} />
-            <Route path="/staff-activities" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}><Layout><StaffActivities /></Layout></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><Layout><Analytics /></Layout></ProtectedRoute>} />
+            <Route path="/vendors" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><Layout><Vendors /></Layout></ProtectedRoute>} />
+            <Route path="/purchase-orders" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><Layout><PurchaseOrders /></Layout></ProtectedRoute>} />
+            <Route path="/transfers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><Layout><Transfers /></Layout></ProtectedRoute>} />
+            <Route path="/staff-activities" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><Layout><StaffActivities /></Layout></ProtectedRoute>} />
 
             {/* All authenticated roles */}
-            <Route path="/settings" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'STAFF']}><Layout><Settings /></Layout></ProtectedRoute>} />
-            <Route path="/donations" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'STAFF']}><Layout><Donations /></Layout></ProtectedRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'STAFF']}><Layout><Dashboard /></Layout></ProtectedRoute>} />
-            <Route path="/inventory" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'STAFF']}><Layout><Inventory /></Layout></ProtectedRoute>} />
-            <Route path="/alerts" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'STAFF']}><Layout><Alerts /></Layout></ProtectedRoute>} />
-            <Route path="/waste-log" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'STAFF']}><Layout><WasteLog /></Layout></ProtectedRoute>} />
-            <Route path="/receiving" element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'STAFF']}><Layout><Receiving /></Layout></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}><Layout><Settings /></Layout></ProtectedRoute>} />
+            <Route path="/donations" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}><Layout><Donations /></Layout></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}><Layout><Dashboard /></Layout></ProtectedRoute>} />
+            <Route path="/inventory" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}><Layout><Inventory /></Layout></ProtectedRoute>} />
+            <Route path="/alerts" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}><Layout><Alerts /></Layout></ProtectedRoute>} />
+            <Route path="/waste-log" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}><Layout><WasteLog /></Layout></ProtectedRoute>} />
+            <Route path="/receiving" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}><Layout><Receiving /></Layout></ProtectedRoute>} />
 
             {/* Store floor + manager (not HQ-only admin workflow) */}
-            <Route path="/tasks" element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF']}><Layout><Tasks /></Layout></ProtectedRoute>} />
+            <Route path="/tasks" element={<ProtectedRoute allowedRoles={['manager', 'staff']}><Layout><Tasks /></Layout></ProtectedRoute>} />
 
             {/* Staff only */}
-            <Route path="/my-shift" element={<ProtectedRoute allowedRoles={['STAFF']}><Layout><MyShift /></Layout></ProtectedRoute>} />
+            <Route path="/my-shift" element={<ProtectedRoute allowedRoles={['staff']}><Layout><MyShift /></Layout></ProtectedRoute>} />
 
             {/* Default Fallback */}
             <Route path="*" element={<NotFoundRedirect />} />

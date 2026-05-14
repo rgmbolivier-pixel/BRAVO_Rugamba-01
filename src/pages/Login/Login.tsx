@@ -5,8 +5,9 @@ import { Terminal, Lock, Mail, Server } from 'lucide-react';
 import './Login.css';
 
 export const Login: React.FC = () => {
-  const [email, setEmail] = useState('admin@bravoos.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('admin@bravoos.az');
+  const [password, setPassword] = useState('BravoOS@2024!');
+  const [error, setError] = useState<string | null>(null);
   const { login, user } = useAuth();
   const navigate = useNavigate();
 
@@ -14,22 +15,21 @@ export const Login: React.FC = () => {
     if (user) navigate('/dashboard', { replace: true });
   }, [user, navigate]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
-    let role: UserRole = 'STAFF';
-    if (email.includes('admin')) role = 'ADMIN';
-    else if (email.includes('manager')) role = 'MANAGER';
-
-    login(email, role);
-
-    if (role === 'ADMIN' || role === 'MANAGER' || role === 'STAFF') navigate('/dashboard');
-    else navigate('/login');
+    try {
+      await login(email, password);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Authentication failed. Please check your credentials.');
+    }
   };
 
-  const setDemo = (roleEmail: string) => {
+  const setDemo = (roleEmail: string, pass: string) => {
     setEmail(roleEmail);
-    setPassword(roleEmail.split('@')[0] + '123');
+    setPassword(pass);
   };
 
   return (
@@ -42,6 +42,11 @@ export const Login: React.FC = () => {
         </div>
 
         <form onSubmit={handleLogin} className="login-form">
+          {error && (
+            <div className="panel border-danger text-danger mb-4" style={{ fontSize: '0.8rem', padding: '10px' }}>
+              ⚠ {error}
+            </div>
+          )}
           <div className="form-group">
             <div className="input-with-icon">
               <Mail className="input-icon" size={18} />
@@ -80,13 +85,13 @@ export const Login: React.FC = () => {
         <div className="demo-credentials panel">
           <h3 className="demo-title">DEMO CREDENTIALS:</h3>
           <div className="demo-grid">
-            <button className="demo-btn" onClick={() => setDemo('admin@bravoos.com')}>
+            <button className="demo-btn" onClick={() => setDemo('admin@bravoos.az', 'BravoOS@2024!')}>
               👑 HQ Admin
             </button>
-            <button className="demo-btn" onClick={() => setDemo('manager@downtown.com')}>
+            <button className="demo-btn" onClick={() => setDemo('manager@bravoos.az', 'BravoOS@2024!')}>
               👔 Store Mgr
             </button>
-            <button className="demo-btn" onClick={() => setDemo('staff@downtown.com')}>
+            <button className="demo-btn" onClick={() => setDemo('staff@bravoos.az', 'BravoOS@2024!')}>
               👥 Store Staff
             </button>
           </div>

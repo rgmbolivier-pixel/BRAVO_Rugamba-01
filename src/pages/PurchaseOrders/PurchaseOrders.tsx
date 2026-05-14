@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Plus, Eye, RefreshCw, CheckCircle, Trash2 } from 'lucide-react';
+import { FileText, Plus, Eye, RefreshCw, CheckCircle, Trash2, Loader2 } from 'lucide-react';
+import { supplyChainService, inventoryService } from '../../services/api';
+import { Pagination } from '../../components/Pagination';
 import './PurchaseOrders.css';
 
 type PoTab = 'ACTIVE' | 'DELIVERED' | 'VENDOR';
@@ -8,6 +10,49 @@ type PoTab = 'ACTIVE' | 'DELIVERED' | 'VENDOR';
 export const PurchaseOrders: React.FC = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<PoTab>('ACTIVE');
+  const [pos, setPos] = useState<any[]>([]);
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    fetchData(currentPage);
+  }, [currentPage]);
+
+  const fetchData = async (page = 1) => {
+    setLoading(true);
+    try {
+      const [poRes, vendorRes, branchRes] = await Promise.all([
+        supplyChainService.getPOs({ page }),
+        supplyChainService.getVendors(),
+        inventoryService.getBranches()
+      ]);
+      const poData = poRes.data;
+      if (poData.results) {
+        setPos(poData.results);
+        setTotalCount(poData.count);
+      } else {
+        const poList = Array.isArray(poData) ? poData : [];
+        setPos(poList);
+        setTotalCount(poList.length);
+      }
+      
+      setVendors(Array.isArray(vendorRes.data) ? vendorRes.data : (vendorRes.data.results || []));
+      setBranches(Array.isArray(branchRes.data) ? branchRes.data : (branchRes.data.results || []));
+    } catch (err) {
+      console.error('Failed to fetch PO data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const activePos = pos.filter(p => p.status === 'pending' || p.status === 'late');
+  const deliveredPos = pos.filter(p => p.status === 'delivered');
+
   return (
     <div className="po-container page-container terminal-ui">
       <div className="flex gap-4 mb-4">
@@ -35,7 +80,12 @@ export const PurchaseOrders: React.FC = () => {
       </div>
 
       <div className="main-grid">
-        {tab === 'VENDOR' ? (
+        {loading ? (
+          <div className="panel col-span-2 flex items-center justify-center p-20">
+            <Loader2 className="animate-spin text-primary mr-3" />
+            <span className="font-bold">FETCHING ORDERS...</span>
+          </div>
+        ) : tab === 'VENDOR' ? (
           <div className="panel col-span-2">
             <div className="panel-header">
               <h2>VENDOR PERFORMANCE</h2>
@@ -52,106 +102,59 @@ export const PurchaseOrders: React.FC = () => {
             <div className="panel-header">
               <h2>DELIVERED PURCHASE ORDERS</h2>
             </div>
-            <p className="text-muted mb-4">Recent closed POs appear here for audit. Demo: PO-001100 (Dairy Fresh Co) — delivered Dec 14.</p>
-            <ul className="text-sm text-main" style={{ lineHeight: 1.8 }}>
-              <li>PO-001100 · Dairy Fresh Co · $1,890 · ✅ Received</li>
-              <li>PO-001099 · Produce World · $2,100 · ✅ Received</li>
-            </ul>
+            {deliveredPos.length === 0 ? (
+              <p className="text-muted">No delivered orders found.</p>
+            ) : (
+              <ul className="text-sm text-main" style={{ lineHeight: 1.8 }}>
+                {deliveredPos.map(po => (
+                  <li key={po.id}>{po.code} · {po.vendor_name} · ${po.amount} · ✅ Received</li>
+                ))}
+              </ul>
+            )}
           </div>
         ) : (
         <div className="panel col-span-2">
           <div className="panel-header">
-            <h2>ACTIVE PURCHASE ORDERS</h2>
+            <h2>ACTIVE PURCHASE ORDERS ({activePos.length})</h2>
           </div>
           <div className="po-list">
-            <div className="po-card">
-              <div className="po-header border-b border-glass pb-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <FileText size={16} className="text-primary" />
-                  <span className="font-bold">PO-001234</span>
-                  <span className="text-muted mx-2">|</span>
-                  <span className="text-main">Dairy Fresh Co</span>
+            {activePos.length === 0 && <p className="text-muted">No active orders.</p>}
+            {activePos.map(po => (
+              <div className="po-card" key={po.id}>
+                <div className="po-header border-b border-glass pb-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className={po.status === 'late' ? 'text-warning' : 'text-primary'} />
+                    <span className="font-bold">{po.code}</span>
+                    <span className="text-muted mx-2">|</span>
+                    <span className="text-main">{po.vendor_name}</span>
+                  </div>
+                  <div className="text-primary font-bold">${po.amount}</div>
                 </div>
-                <div className="text-primary font-bold">$2,450</div>
-              </div>
-              <div className="flex justify-between text-sm mb-3">
-                <div>
-                  <span className="text-success flex items-center gap-1">● CONFIRMED</span>
-                  <span className="text-dim text-xs mt-1 block">Created: Dec 18, 2024</span>
+                <div className="flex justify-between text-sm mb-3">
+                  <div>
+                    <span className={po.status === 'late' ? 'text-warning flex items-center gap-1' : 'text-success flex items-center gap-1'}>
+                      ● {po.status.toUpperCase()}
+                    </span>
+                    <span className="text-dim text-xs mt-1 block">Created: {po.date}</span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-muted block">Expected: Dec 20, 2024</span>
+                <div className="text-sm text-muted mb-3 border-l-2 border-primary pl-2">
+                  Branch: {po.branch_name}
                 </div>
-              </div>
-              <div className="text-sm text-muted mb-3 border-l-2 border-primary pl-2">
-                Items: 2% Milk (200u), Whole Milk (150u), Cheese (50u)
-              </div>
-              <div className="flex gap-2 border-t border-glass pt-3 mt-auto">
-                <button className="btn-secondary small"><Eye size={14} /> VIEW DETAILS</button>
-                <button className="btn-secondary small">TRACK DELIVERY</button>
-                <button className="btn-secondary small">SEND REMINDER</button>
-                <button className="btn-primary small ml-auto"><CheckCircle size={14} className="mr-1" /> MARK DELIVERED</button>
-              </div>
-            </div>
-
-            <div className="po-card">
-              <div className="po-header border-b border-glass pb-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <FileText size={16} className="text-warning" />
-                  <span className="font-bold">PO-001235</span>
-                  <span className="text-muted mx-2">|</span>
-                  <span className="text-main">Produce World</span>
-                </div>
-                <div className="text-warning font-bold">$890</div>
-              </div>
-              <div className="flex justify-between text-sm mb-3">
-                <div>
-                  <span className="text-warning flex items-center gap-1">● SENT TO VENDOR</span>
-                  <span className="text-dim text-xs mt-1 block">Created: Dec 17, 2024</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-muted block">Expected: Dec 19, 2024</span>
+                <div className="flex gap-2 border-t border-glass pt-3 mt-auto">
+                  <button className="btn-secondary small"><Eye size={14} /> VIEW DETAILS</button>
+                  <button className="btn-primary small ml-auto"><CheckCircle size={14} className="mr-1" /> MARK DELIVERED</button>
                 </div>
               </div>
-              <div className="text-sm text-muted mb-3 border-l-2 border-warning pl-2">
-                Items: Lettuce (100u), Tomatoes (200u), Cucumbers (80u)
-              </div>
-              <div className="flex gap-2 border-t border-glass pt-3 mt-auto">
-                <button className="btn-secondary small"><Eye size={14} /> VIEW DETAILS</button>
-                <button className="btn-secondary small text-danger"><Trash2 size={14} /> CANCEL ORDER</button>
-                <button className="btn-secondary small ml-auto"><RefreshCw size={14} className="mr-1" /> RESEND</button>
-              </div>
-            </div>
-
-            <div className="po-card opacity-80">
-              <div className="po-header border-b border-glass pb-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <FileText size={16} className="text-dim" />
-                  <span className="font-bold">PO-001236</span>
-                  <span className="text-muted mx-2">|</span>
-                  <span className="text-main">Bakery Supplies</span>
-                </div>
-                <div className="text-dim font-bold">$3,200</div>
-              </div>
-              <div className="flex justify-between text-sm mb-3">
-                <div>
-                  <span className="text-muted flex items-center gap-1">● DRAFT</span>
-                  <span className="text-dim text-xs mt-1 block">Created: Dec 18, 2024</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-muted block">Expected: Dec 21, 2024</span>
-                </div>
-              </div>
-              <div className="text-sm text-muted mb-3 border-l-2 border-glass pl-2">
-                Items: Bread Flour (500kg), Yeast (50kg), Salt (30kg)
-              </div>
-              <div className="flex gap-2 border-t border-glass pt-3 mt-auto">
-                <button className="btn-secondary small">EDIT</button>
-                <button className="btn-primary small">SEND TO VENDOR</button>
-                <button className="btn-secondary small ml-auto text-danger"><Trash2 size={14} /> DELETE</button>
-              </div>
-            </div>
+            ))}
           </div>
+          <Pagination 
+            currentPage={currentPage}
+            totalCount={totalCount}
+            pageSize={10}
+            onPageChange={setCurrentPage}
+            loading={loading}
+          />
         </div>
         )}
 
@@ -163,17 +166,14 @@ export const PurchaseOrders: React.FC = () => {
             <div className="form-group mb-3">
               <label className="text-xs text-muted block mb-1">Vendor:</label>
               <select className="terminal-select w-full">
-                <option>Dairy Fresh Co</option>
-                <option>Produce World</option>
-                <option>Bakery Supplies</option>
+                {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
             </div>
             
             <div className="form-group mb-3">
               <label className="text-xs text-muted block mb-1">Branch:</label>
               <select className="terminal-select w-full">
-                <option>Downtown Store</option>
-                <option>Uptown Store</option>
+                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
 

@@ -1,58 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, Shield, Edit2, Trash2, X, Key } from 'lucide-react';
+import { userService, inventoryService } from '../../services/api';
+import { Pagination } from '../../components/Pagination';
 import './Users.css';
 
 interface User {
-  id: number; name: string; email: string; role: 'ADMIN' | 'MANAGER' | 'STAFF';
-  branch: string; phone: string; status: 'Active' | 'Inactive'; lastLogin: string;
+  id: string; first_name: string; last_name: string; email: string; role: 'admin' | 'manager' | 'staff';
+  branch: string; branch_name?: string; phone: string; status: 'active' | 'inactive'; last_login: string;
 }
 
-const INIT: User[] = [
-  { id: 1, name: 'Əli Həsənov', email: 'ali@bravoos.az', role: 'ADMIN', branch: 'HQ', phone: '+994 50 123 4567', status: 'Active', lastLogin: 'Just now' },
-  { id: 2, name: 'Leyla Məmmədova', email: 'leyla@bravoos.az', role: 'MANAGER', branch: 'Nizami Store', phone: '+994 50 234 5678', status: 'Active', lastLogin: '2 mins ago' },
-  { id: 3, name: 'Rəşad Quliyev', email: 'rashad@bravoos.az', role: 'MANAGER', branch: 'Fountain Square', phone: '+994 50 345 6789', status: 'Active', lastLogin: '15 mins ago' },
-  { id: 4, name: 'Aysel Əliyeva', email: 'aysel@bravoos.az', role: 'STAFF', branch: 'Nizami Store', phone: '+994 50 456 7890', status: 'Active', lastLogin: '1 hour ago' },
-  { id: 5, name: 'Nicat İsmayılov', email: 'nicat@bravoos.az', role: 'STAFF', branch: 'Fountain Square', phone: '+994 50 567 8901', status: 'Active', lastLogin: '30 mins ago' },
-  { id: 6, name: 'Günel Hüseynova', email: 'gunel@bravoos.az', role: 'STAFF', branch: 'White City', phone: '+994 50 678 9012', status: 'Inactive', lastLogin: '5 days ago' },
-];
-
-const EMPTY: Omit<User, 'id'> = { name: '', email: '', role: 'STAFF', branch: 'Nizami Store', phone: '', status: 'Active', lastLogin: 'Never' };
+const EMPTY: any = { first_name: '', last_name: '', email: '', role: 'staff', branch: '', phone: '', status: 'active' };
 
 export const Users: React.FC = () => {
-  const [users, setUsers] = useState<User[]>(INIT);
+  const [users, setUsers] = useState<User[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState<Omit<User, 'id'>>(EMPTY);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState<any>(EMPTY);
   const [roleFilter, setRoleFilter] = useState('All');
   const [search, setSearch] = useState('');
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    fetchData(currentPage);
+  }, [currentPage]);
+
+  const fetchData = async (page = 1) => {
+    setLoading(true);
+    try {
+      const [usersRes, branchesRes] = await Promise.all([
+        userService.getUsers({ page }),
+        inventoryService.getBranches()
+      ]);
+      
+      const usersData = usersRes.data;
+      if (usersData.results) {
+        setUsers(usersData.results);
+        setTotalCount(usersData.count);
+      } else {
+        setUsers(usersData);
+        setTotalCount(usersData.length);
+      }
+      
+      const branchesData = branchesRes.data;
+      setBranches(Array.isArray(branchesData) ? branchesData : (branchesData.results || []));
+    } catch (err) {
+      console.error('Failed to fetch user data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openAdd = () => { setForm(EMPTY); setEditId(null); setShowForm(true); };
+  
   const openEdit = (u: User) => { 
-    setForm({ 
-      name: u.name, email: u.email, role: u.role, branch: u.branch, 
-      phone: u.phone, status: u.status, lastLogin: u.lastLogin 
-    }); 
+    setForm({ ...u }); 
     setEditId(u.id); 
     setShowForm(true); 
   };
-  const handleDelete = (id: number) => { if (confirm('Delete this user?')) setUsers(users.filter(u => u.id !== id)); };
-  const handleSave = () => {
-    if (!form.name || !form.email) return;
-    if (editId) {
-      setUsers(users.map(u => u.id === editId ? { ...form, id: editId } : u));
-    } else {
-      setUsers([...users, { ...form, id: Date.now() }]);
+
+  const handleDelete = async (id: string) => { 
+    if (confirm('Delete this user?')) {
+      try {
+        await userService.deleteUser(id);
+        fetchData();
+      } catch (err) {
+        alert('Failed to delete user');
+      }
     }
-    setShowForm(false); setEditId(null);
+  };
+
+  const handleSave = async () => {
+    if (!form.email || !form.first_name) return;
+    try {
+      if (editId) {
+        await userService.updateUser(editId, form);
+      } else {
+        await userService.createUser(form);
+      }
+      fetchData();
+      setShowForm(false); setEditId(null);
+    } catch (err) {
+      alert('Failed to save user');
+    }
   };
 
   const filtered = users.filter(u => {
     if (roleFilter !== 'All' && u.role !== roleFilter) return false;
-    if (search && !u.name.toLowerCase().includes(search.toLowerCase()) && !u.email.toLowerCase().includes(search.toLowerCase())) return false;
+    const fullName = `${u.first_name} ${u.last_name}`.toLowerCase();
+    if (search && !fullName.includes(search.toLowerCase()) && !u.email.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const roleBadge = (r: string) => r === 'ADMIN' ? 'badge badge-danger' : r === 'MANAGER' ? 'badge badge-warning' : 'badge badge-success';
+  const roleBadge = (r: string) => r.toLowerCase() === 'admin' ? 'badge badge-danger' : r.toLowerCase() === 'manager' ? 'badge badge-warning' : 'badge badge-success';
 
   return (
     <div className="users-container page-container terminal-ui">
@@ -74,12 +118,13 @@ export const Users: React.FC = () => {
             <button className="btn-icon" onClick={() => setShowForm(false)}><X size={18} /></button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-            <div><label className="text-dim text-xs block mb-1">Full Name</label><input className="terminal-input w-full" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+            <div><label className="text-dim text-xs block mb-1">First Name</label><input className="terminal-input w-full" value={form.first_name} onChange={e => setForm({ ...form, first_name: e.target.value })} /></div>
+            <div><label className="text-dim text-xs block mb-1">Last Name</label><input className="terminal-input w-full" value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} /></div>
             <div><label className="text-dim text-xs block mb-1">Email</label><input type="email" className="terminal-input w-full" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
-            <div><label className="text-dim text-xs block mb-1">Role</label><select className="terminal-select w-full" value={form.role} onChange={e => setForm({ ...form, role: e.target.value as any })}><option>ADMIN</option><option>MANAGER</option><option>STAFF</option></select></div>
-            <div><label className="text-dim text-xs block mb-1">Branch</label><select className="terminal-select w-full" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}><option>HQ</option><option>Nizami Store</option><option>Fountain Square</option><option>White City</option></select></div>
+            <div><label className="text-dim text-xs block mb-1">Role</label><select className="terminal-select w-full" value={form.role} onChange={e => setForm({ ...form, role: e.target.value as any })}><option value="admin">ADMIN</option><option value="manager">MANAGER</option><option value="staff">STAFF</option></select></div>
+            <div><label className="text-dim text-xs block mb-1">Branch</label><select className="terminal-select w-full" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}><option value="">Select Branch</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
             <div><label className="text-dim text-xs block mb-1">Phone</label><input className="terminal-input w-full" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
-            <div><label className="text-dim text-xs block mb-1">Status</label><select className="terminal-select w-full" value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'Active' | 'Inactive' })}><option>Active</option><option>Inactive</option></select></div>
+            <div><label className="text-dim text-xs block mb-1">Status</label><select className="terminal-select w-full" value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'active' | 'inactive' })}><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
             <button className="btn-primary" onClick={handleSave}>{editId ? 'UPDATE USER' : 'CREATE USER'}</button>
@@ -88,43 +133,51 @@ export const Users: React.FC = () => {
         </div>
       )}
 
-      <div className="panel">
-        <div className="panel-header">
-          <h2>👥 USER MANAGEMENT ({filtered.length} users)</h2>
-        </div>
-        <div className="table-responsive">
-          <table className="terminal-table">
-            <thead>
-              <tr>
-                <th>Name</th><th>Email</th><th>Role</th><th>Branch</th><th>Phone</th><th>Status</th><th>Last Login</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(u => (
-                <tr key={u.id} style={{ opacity: u.status === 'Inactive' ? 0.5 : 1 }}>
-                  <td className="font-bold text-main">{u.name}</td>
-                  <td className="text-muted">{u.email}</td>
-                  <td><span className={roleBadge(u.role)}>{u.role === 'ADMIN' && <Shield size={10} style={{ display: 'inline', marginRight: 4 }} />}{u.role}</span></td>
-                  <td>{u.branch}</td>
-                  <td className="text-muted">{u.phone}</td>
-                  <td><span className={u.status === 'Active' ? 'text-success' : 'text-dim'} style={{ fontWeight: 700 }}>● {u.status}</span></td>
-                  <td className="text-dim">{u.lastLogin}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <button className="btn-icon small" title="Edit" onClick={() => openEdit(u)}><Edit2 size={14} /></button>
-                      <button className="btn-icon small" title="Reset Password"><Key size={14} /></button>
-                      <button className="btn-icon small text-danger" title="Delete" onClick={() => handleDelete(u.id)}><Trash2 size={14} /></button>
-                    </div>
-                  </td>
+      {loading ? (
+        <div className="panel" style={{ textAlign: 'center', padding: 40 }}><span className="loading-text">SYNCING USER DIRECTORY...</span></div>
+      ) : (
+        <div className="panel">
+          <div className="panel-header">
+            <h2>👥 USER MANAGEMENT ({filtered.length} users)</h2>
+          </div>
+          <div className="table-responsive">
+            <table className="terminal-table">
+              <thead>
+                <tr>
+                  <th>Name</th><th>Email</th><th>Role</th><th>Branch</th><th>Phone</th><th>Status</th><th>Last Login</th><th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map(u => (
+                  <tr key={u.id} style={{ opacity: u.status === 'inactive' ? 0.5 : 1 }}>
+                    <td className="font-bold text-main">{u.first_name} {u.last_name}</td>
+                    <td className="text-muted">{u.email}</td>
+                    <td><span className={roleBadge(u.role)}>{u.role === 'admin' && <Shield size={10} style={{ display: 'inline', marginRight: 4 }} />}{u.role.toUpperCase()}</span></td>
+                    <td>{u.branch_name || 'N/A'}</td>
+                    <td className="text-muted">{u.phone}</td>
+                    <td><span className={u.status === 'active' ? 'text-success' : 'text-dim'} style={{ fontWeight: 700 }}>● {u.status.toUpperCase()}</span></td>
+                    <td className="text-dim">{u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button className="btn-icon small" title="Edit" onClick={() => openEdit(u)}><Edit2 size={14} /></button>
+                        <button className="btn-icon small" title="Reset Password"><Key size={14} /></button>
+                        <button className="btn-icon small text-danger" title="Delete" onClick={() => handleDelete(u.id)}><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-glass)' }}>
-          <div className="text-sm text-muted">Showing {filtered.length} of {users.length} users</div>
-        </div>
-      </div>
+      )}
+        <Pagination 
+          currentPage={currentPage}
+          totalCount={totalCount}
+          pageSize={10}
+          onPageChange={setCurrentPage}
+          loading={loading}
+        />
     </div>
   );
 };

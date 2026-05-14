@@ -1,49 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Users, Clock, Plus, BarChart2, Edit2, Trash2, X, Power } from 'lucide-react';
+import { inventoryService } from '../../services/api';
+import { Pagination } from '../../components/Pagination';
 import './Branches.css';
 
 interface Branch {
-  id: number; name: string; address: string; city: string;
-  manager: string; phone: string; status: 'Active' | 'Inactive';
-  staff: number; hours: string; waste: string; saved: string; score: number;
+  id: string; name: string; address: string; city: string;
+  manager?: string; phone: string; status: 'active' | 'inactive';
+  staff_count?: number; opening_time?: string; closing_time?: string;
+  waste?: string; saved?: string; score?: number;
 }
 
-const INIT: Branch[] = [
-  { id: 1, name: 'NIZAMI STORE', address: 'Nizami küçəsi 45', city: 'Bakı', manager: 'Əli Həsənov', phone: '+994 12 497 0100', status: 'Active', staff: 8, hours: '7am - 11pm', waste: '$1,240 ▼12%', saved: '$3,450 ▲8%', score: 94 },
-  { id: 2, name: 'FOUNTAIN SQUARE', address: 'Füzuli küçəsi 12', city: 'Bakı', manager: 'Leyla Məmmədova', phone: '+994 12 492 0200', status: 'Active', staff: 6, hours: '8am - 10pm', waste: '$1,890 ▲5%', saved: '$2,100 ▼3%', score: 88 },
-  { id: 3, name: 'WHITE CITY BRANCH', address: 'Həsən Əliyev küçəsi 88', city: 'Bakı', manager: 'Rəşad Quliyev', phone: '+994 12 404 0300', status: 'Inactive', staff: 4, hours: '9am - 9pm', waste: '$890 ▼20%', saved: '$1,200 ▲15%', score: 76 },
-];
-
-const EMPTY: Omit<Branch, 'id'> = { name: '', address: '', city: 'Bakı', manager: '', phone: '', status: 'Active', staff: 0, hours: '8am - 10pm', waste: '$0', saved: '$0', score: 0 };
+const EMPTY: any = { name: '', address: '', city: 'Baku', manager: '', phone: '', status: 'active', branch_code: '' };
 
 export const Branches: React.FC = () => {
   const navigate = useNavigate();
-  const [branches, setBranches] = useState<Branch[]>(INIT);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState<Omit<Branch, 'id'>>(EMPTY);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState<any>(EMPTY);
   const [search, setSearch] = useState('');
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const openAdd = () => { setForm(EMPTY); setEditId(null); setShowForm(true); };
+  useEffect(() => {
+    fetchBranches(currentPage);
+  }, [currentPage]);
+
+  const fetchBranches = async (page = 1) => {
+    setLoading(true);
+    try {
+      const [branchesRes, perfRes] = await Promise.all([
+        inventoryService.getBranches({ page }),
+        import('../../services/api').then(m => m.analyticsService.getBranchPerformance())
+      ]);
+      
+      const branchesData = branchesRes.data;
+      let branchList: any[] = [];
+      
+      if (branchesData.results) {
+        branchList = branchesData.results;
+        setTotalCount(branchesData.count);
+      } else {
+        branchList = Array.isArray(branchesData) ? branchesData : [];
+        setTotalCount(branchList.length);
+      }
+      
+      const perfData = perfRes.data;
+      
+      const mapped = branchList.map((b: any) => {
+        const perf = Array.isArray(perfData) ? (perfData.find((p: any) => p.id === b.id) || {}) : {};
+        return {
+          ...b,
+          waste: perf.waste || '$0',
+          saved: perf.saved || '$0',
+          score: perf.score || 0,
+          staff_count: b.staff_count || 0
+        };
+      });
+      
+      setBranches(mapped);
+    } catch (err) {
+      console.error('Failed to fetch branches', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openAdd = () => { setForm({ ...EMPTY, branch_code: `BR-${Date.now().toString().slice(-4)}` }); setEditId(null); setShowForm(true); };
+  
   const openEdit = (b: Branch) => { 
-    setForm({ 
-      name: b.name, address: b.address, city: b.city, manager: b.manager, 
-      phone: b.phone, status: b.status, staff: b.staff, hours: b.hours, 
-      waste: b.waste, saved: b.saved, score: b.score 
-    }); 
+    setForm({ ...b }); 
     setEditId(b.id); 
     setShowForm(true); 
   };
-  const handleDelete = (id: number) => { if (confirm('Delete this branch?')) setBranches(branches.filter(b => b.id !== id)); };
-  const handleSave = () => {
-    if (!form.name || !form.address) return;
-    if (editId) {
-      setBranches(branches.map(b => b.id === editId ? { ...form, id: editId } : b));
-    } else {
-      setBranches([...branches, { ...form, id: Date.now() }]);
+
+  const handleDelete = async (id: string) => { 
+    if (confirm('Delete this branch?')) {
+      try {
+        await inventoryService.deleteBranch(id);
+        fetchBranches();
+      } catch (err) {
+        alert('Failed to delete branch');
+      }
     }
-    setShowForm(false); setEditId(null);
+  };
+
+  const handleSave = async () => {
+    if (!form.name || !form.address || !form.branch_code) return;
+    try {
+      if (editId) {
+        await inventoryService.updateBranch(editId, form);
+      } else {
+        await inventoryService.addBranch(form);
+      }
+      fetchBranches();
+      setShowForm(false); setEditId(null);
+    } catch (err) {
+      alert('Failed to save branch');
+    }
   };
 
   const filtered = branches.filter(b => !search || b.name.toLowerCase().includes(search.toLowerCase()) || b.city.toLowerCase().includes(search.toLowerCase()));
@@ -70,7 +129,7 @@ export const Branches: React.FC = () => {
             <div><label className="text-dim text-xs block mb-1">City</label><input className="terminal-input w-full" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} /></div>
             <div><label className="text-dim text-xs block mb-1">Manager</label><input className="terminal-input w-full" value={form.manager} onChange={e => setForm({ ...form, manager: e.target.value })} /></div>
             <div><label className="text-dim text-xs block mb-1">Phone</label><input className="terminal-input w-full" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
-            <div><label className="text-dim text-xs block mb-1">Status</label><select className="terminal-select w-full" value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'Active' | 'Inactive' })}><option>Active</option><option>Inactive</option></select></div>
+            <div><label className="text-dim text-xs block mb-1">Status</label><select className="terminal-select w-full" value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'active' | 'inactive' })}><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
             <button className="btn-primary" onClick={handleSave}>{editId ? 'UPDATE BRANCH' : 'CREATE BRANCH'}</button>
@@ -79,35 +138,38 @@ export const Branches: React.FC = () => {
         </div>
       )}
 
-      <div className="panel">
-        <div className="panel-header">
-          <h2>🏢 BRANCHES ({filtered.length})</h2>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {filtered.map(b => (
-            <div key={b.id} className="branch-card" style={{ padding: 20, border: '1px solid var(--border-glass)', borderLeft: `4px solid ${b.status === 'Active' ? 'var(--success)' : 'var(--text-dim)'}`, background: 'var(--bg-card)', borderRadius: 8, opacity: b.status === 'Inactive' ? 0.6 : 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border-glass)' }}>
-                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <MapPin className="text-primary" size={18} /> {b.name}
-                </h3>
-                <span className={b.status === 'Active' ? 'text-success' : 'text-dim'} style={{ fontWeight: 700, fontSize: '0.8rem' }}>● {b.status.toUpperCase()}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: '0.85rem', marginBottom: 16 }}>
-                <div>
-                  <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}><strong className="text-main">Location:</strong> {b.address}, {b.city}</div>
-                  <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}><strong className="text-main">Manager:</strong> {b.manager}</div>
-                  <div style={{ color: 'var(--text-muted)' }}><strong className="text-main">Phone:</strong> {b.phone}</div>
+      {loading ? (
+        <div className="panel" style={{ textAlign: 'center', padding: 40 }}><span className="loading-text">SYNCING BRANCH DATA...</span></div>
+      ) : (
+        <div className="panel">
+          <div className="panel-header">
+            <h2>🏢 BRANCHES ({filtered.length})</h2>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {filtered.map(b => (
+              <div key={b.id} className="branch-card" style={{ padding: 20, border: '1px solid var(--border-glass)', borderLeft: `4px solid ${b.status === 'active' ? 'var(--success)' : 'var(--text-dim)'}`, background: 'var(--bg-card)', borderRadius: 8, opacity: b.status === 'inactive' ? 0.6 : 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border-glass)' }}>
+                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <MapPin className="text-primary" size={18} /> {b.name}
+                  </h3>
+                  <span className={b.status === 'active' ? 'text-success' : 'text-dim'} style={{ fontWeight: 700, fontSize: '0.8rem' }}>● {b.status.toUpperCase()}</span>
                 </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}><Users size={14} className="text-primary" /> <strong className="text-main">Staff:</strong> <span className="text-muted">{b.staff}</span></div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={14} className="text-primary" /> <strong className="text-main">Hours:</strong> <span className="text-muted">{b.hours}</span></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: '0.85rem', marginBottom: 16 }}>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}><strong className="text-main">Location:</strong> {b.address}, {b.city}</div>
+                    <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}><strong className="text-main">Manager:</strong> {b.manager || 'Not Assigned'}</div>
+                    <div style={{ color: 'var(--text-muted)' }}><strong className="text-main">Phone:</strong> {b.phone}</div>
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}><Users size={14} className="text-primary" /> <strong className="text-main">Staff:</strong> <span className="text-muted">{b.staff_count}</span></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={14} className="text-primary" /> <strong className="text-main">Hours:</strong> <span className="text-muted">{b.opening_time} - {b.closing_time}</span></div>
+                  </div>
                 </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-glass)', borderRadius: 6, marginBottom: 16, fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
-                <span>Waste: <span className="text-primary">{b.waste}</span></span>
-                <span>Saved: <span className="text-primary">{b.saved}</span></span>
-                <span style={{ fontWeight: 800, color: b.score >= 90 ? 'var(--success)' : b.score >= 80 ? 'var(--warning)' : 'var(--danger)' }}>Score: {b.score}/100</span>
-              </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-glass)', borderRadius: 6, marginBottom: 16, fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
+                  <span>Waste: <span className="text-primary">{b.waste}</span></span>
+                  <span>Saved: <span className="text-primary">{b.saved}</span></span>
+                  <span style={{ fontWeight: 800, color: (b.score || 0) >= 90 ? 'var(--success)' : (b.score || 0) >= 80 ? 'var(--warning)' : 'var(--danger)' }}>Score: {b.score}/100</span>
+                </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button className="btn-secondary small" style={{ flex: 1 }} onClick={() => openEdit(b)}><Edit2 size={14} /> EDIT</button>
                 <button className="btn-secondary small" style={{ flex: 1 }} onClick={() => navigate('/analytics')}><BarChart2 size={14} /> ANALYTICS</button>
@@ -116,7 +178,15 @@ export const Branches: React.FC = () => {
             </div>
           ))}
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalCount={totalCount}
+          pageSize={10}
+          onPageChange={setCurrentPage}
+          loading={loading}
+        />
       </div>
+      )}
     </div>
   );
 };

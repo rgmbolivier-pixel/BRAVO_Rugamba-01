@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Truck, ArrowRightLeft, MapPin, CheckCircle, Navigation, Zap, Package, Clock, Send, X, History, Plus, FileText, Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Truck, ArrowRightLeft, MapPin, CheckCircle, Navigation, Zap, Package, Clock, Send, X, History, Plus, FileText, Download, Loader2 } from 'lucide-react';
+import { inventoryService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { Pagination } from '../../components/Pagination';
 import './Transfers.css';
 
 type TransferView = 'OUTGOING' | 'INCOMING' | 'HISTORY' | 'REQUEST';
@@ -24,49 +27,66 @@ interface Transfer {
 }
 
 export const Transfers: React.FC = () => {
+  const { user: currentUser } = useAuth();
   const [view, setView] = useState<TransferView>('OUTGOING');
+  const [loading, setLoading] = useState(true);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const outgoingTransfers: Transfer[] = [
-    {
-      id: '1', to: 'Uptown Store', product: '2% Milk', quantity: 45, batch: 'L2401',
-      status: 'DELIVERED', reason: 'Preventing waste — expires today',
-      deliveredAt: 'Dec 18, 11:30 AM',
-      value: 112.50
-    },
-    {
-      id: '2', to: 'Northside Store', product: 'Cheddar Cheese', quantity: 23, batch: 'C2392',
-      status: 'IN_TRANSIT', reason: 'Surplus stock, Northside has demand',
-      driver: 'John',
-      eta: '1 hour',
-      value: 57.50
-    }
-  ];
+  useEffect(() => {
+    fetchTransfers(currentPage);
+  }, [currentPage, view]);
 
-  const incomingTransfers: Transfer[] = [
-    {
-      id: '3',
-      from: 'Westside Store',
-      product: 'Eggs',
-      quantity: 60,
-      batch: 'E2405',
-      status: 'RECEIVED',
-      reason: 'Stock balance',
-      receivedAt: 'Dec 18, 9:15 AM',
-      receivedBy: 'Sarah Lee',
-      stockLocation: 'Cooler B',
-      expiry: 'Dec 25, 2024'
-    },
-    {
-      id: '4',
-      from: 'Uptown Store',
-      product: 'Sourdough Bread',
-      quantity: 30,
-      batch: 'B2415',
-      status: 'PENDING',
-      reason: 'Surplus transfer',
-      eta: 'Dec 18, 2:00 PM'
+  const fetchTransfers = async (page = 1) => {
+    setLoading(true);
+    try {
+      const res = await inventoryService.getTransfers({ page });
+      const data = res.data;
+      let results: any[] = [];
+      
+      if (data.results) {
+        results = data.results;
+        setTotalCount(data.count);
+      } else {
+        results = Array.isArray(data) ? data : [];
+        setTotalCount(results.length);
+      }
+
+      const mapped: Transfer[] = results.map((t: any) => ({
+        id: String(t.id),
+        from: t.from_branch_name,
+        to: t.to_branch_name,
+        product: t.product_name,
+        quantity: t.quantity,
+        batch: 'SYNCING...', 
+        status: t.status.toUpperCase().replace(' ', '_') as any,
+        reason: t.reason,
+        driver: t.driver_name,
+        eta: t.eta,
+        deliveredAt: t.delivered_at ? new Date(t.delivered_at).toLocaleString() : undefined,
+        receivedAt: t.received_at ? new Date(t.received_at).toLocaleString() : undefined,
+        receivedBy: t.received_by_name
+      }));
+      setTransfers(mapped);
+    } catch (err) {
+      console.error('Failed to fetch transfers', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const outgoingTransfers = transfers.filter(t => t.from === currentUser?.branch_name);
+  const incomingTransfers = transfers.filter(t => t.to === currentUser?.branch_name);
+  const historyItems = transfers.filter(t => t.status === 'DELIVERED' || t.status === 'RECEIVED').map(t => ({
+    date: t.deliveredAt || t.receivedAt || 'N/A',
+    desc: `${t.from === currentUser?.branch_name ? 'Sent' : 'Recv'} ${t.quantity}u ${t.product} ${t.from === currentUser?.branch_name ? '→ ' + t.to : '← ' + t.from}`,
+    status: t.status === 'RECEIVED' ? 'Received' : 'Delivered',
+    saved: '$---',
+    dir: t.from === currentUser?.branch_name ? 'out' : 'in'
+  }));
 
   const aiRecommendations = [
     {
@@ -79,26 +99,7 @@ export const Transfers: React.FC = () => {
       wasteSavings: 45,
       salesSavings: 60,
       totalValue: 105
-    },
-    {
-      product: 'Cheddar Cheese',
-      quantity: 23,
-      expiry: 'Dec 20',
-      toBranch: 'Northside',
-      needed: 20,
-      reason: 'high demand',
-      wasteSavings: 100,
-      salesSavings: 80,
-      totalValue: 180
     }
-  ];
-
-  const historyItems = [
-    { date: 'Dec 15', desc: 'Sent 50u Milk → Uptown', status: 'Completed', saved: '$125', dir: 'out' },
-    { date: 'Dec 12', desc: 'Recv 30u Eggs ← Northside', status: 'Completed', saved: 'In stock', dir: 'in' },
-    { date: 'Dec 10', desc: 'Sent 25u Bread → Westside', status: 'Completed', saved: '$37', dir: 'out' },
-    { date: 'Dec 8',  desc: 'Sent 18u Cheese → Eastside', status: 'Completed', saved: '$54', dir: 'out' },
-    { date: 'Dec 5',  desc: 'Recv 40u Milk ← Uptown', status: 'Completed', saved: 'In stock', dir: 'in' },
   ];
 
   const tabs: { key: TransferView; label: string; icon: string }[] = [
@@ -115,7 +116,7 @@ export const Transfers: React.FC = () => {
         <div className="header-stats w-full">
           <div className="stat-group">
             <span className="stat-label">BRANCH</span>
-            <span className="stat-value text-bright">DOWNTOWN STORE</span>
+            <span className="stat-value text-bright">{currentUser?.branch_name || 'BRAVO STORE'}</span>
           </div>
           <div className="stat-group">
             <span className="stat-label">OUTGOING</span>
@@ -126,8 +127,8 @@ export const Transfers: React.FC = () => {
             <span className="stat-value text-success">{incomingTransfers.length}</span>
           </div>
           <div className="stat-group">
-            <span className="stat-label">SAVED THIS MONTH</span>
-            <span className="stat-value text-primary">$1,240</span>
+            <span className="stat-label">TOTAL COUNT</span>
+            <span className="stat-value text-primary">{totalCount}</span>
           </div>
         </div>
       </header>
@@ -146,6 +147,12 @@ export const Transfers: React.FC = () => {
         ))}
       </div>
 
+      {loading ? (
+        <div className="panel flex items-center justify-center p-20 col-span-3">
+          <Loader2 className="animate-spin text-primary mr-3" />
+          <span className="font-bold">SYNCING TRANSFERS...</span>
+        </div>
+      ) : (
       <div className="main-grid">
         {/* Main Panel */}
         <div className="panel col-span-2">
@@ -388,6 +395,13 @@ export const Transfers: React.FC = () => {
               </form>
             </>
           )}
+          <Pagination 
+            currentPage={currentPage}
+            totalCount={totalCount}
+            pageSize={10}
+            onPageChange={setCurrentPage}
+            loading={loading}
+          />
         </div>
 
         {/* Side Panels */}
@@ -445,7 +459,7 @@ export const Transfers: React.FC = () => {
                 ))}
               </ul>
               <div className="history-footer-sm">
-                <span className="text-primary font-bold text-xs">$1,240 saved this month</span>
+                <span className="text-primary font-bold text-xs">$--- saved this month</span>
               </div>
               <button type="button" className="btn-text w-full mt-2 text-primary text-xs" onClick={() => setView('HISTORY')}>
                 VIEW FULL HISTORY →
@@ -454,6 +468,7 @@ export const Transfers: React.FC = () => {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };

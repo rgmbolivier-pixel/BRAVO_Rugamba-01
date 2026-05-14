@@ -72,7 +72,7 @@ export const Topbar: React.FC = () => {
     const items = [];
     items.push({ path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') });
     
-    if (user.role === 'STAFF') {
+    if (user.role === 'staff') {
       items.push({ path: '/my-shift', icon: Clock, label: t('nav.my_shift') });
       items.push({ path: '/tasks', icon: CheckSquare, label: t('nav.tasks') });
       items.push({ path: '/waste-log', icon: Trash2, label: t('nav.waste_log') });
@@ -80,7 +80,7 @@ export const Topbar: React.FC = () => {
       items.push({ path: '/inventory', icon: Package, label: t('nav.inventory') });
       items.push({ path: '/alerts', icon: AlertTriangle, label: t('nav.alerts') });
       items.push({ path: '/donations', icon: Heart, label: t('nav.donations') });
-    } else if (user.role === 'MANAGER') {
+    } else if (user.role === 'manager') {
       items.push({ path: '/analytics', icon: BarChart3, label: t('nav.analytics') });
       items.push({ path: '/inventory', icon: Package, label: t('nav.inventory') });
       items.push({ path: '/alerts', icon: AlertTriangle, label: t('nav.alerts') });
@@ -91,7 +91,7 @@ export const Topbar: React.FC = () => {
       items.push({ path: '/vendors', icon: Truck, label: t('nav.vendors') });
       items.push({ path: '/purchase-orders', icon: FileText, label: t('nav.po') });
       items.push({ path: '/donations', icon: Heart, label: t('nav.donations') });
-    } else if (user.role === 'ADMIN') {
+    } else if (user.role === 'admin') {
       items.push({ path: '/analytics', icon: BarChart3, label: t('nav.analytics') });
       items.push({ path: '/branches', icon: Building, label: t('nav.branches') });
       items.push({ path: '/users', icon: UsersIcon, label: t('nav.users') });
@@ -220,7 +220,7 @@ export const Topbar: React.FC = () => {
                         <div className="dd-avatar">{user.email[0].toUpperCase()}</div>
                         <div className="dd-user-info">
                           <span className="dd-email">{user.email}</span>
-                          <span className="dd-role">{user.role}</span>
+                          <span className="dd-role">{user.role.toUpperCase()}</span>
                         </div>
                       </div>
                       <div className="dd-divider" />
@@ -276,7 +276,7 @@ export const Topbar: React.FC = () => {
               <div className="avatar large">{user.email[0].toUpperCase()}</div>
               <div className="user-info">
                 <span className="user-email">{user.email}</span>
-                <span className="user-role-badge">{user.role}</span>
+                <span className="user-role-badge">{user.role.toUpperCase()}</span>
               </div>
             </div>
 

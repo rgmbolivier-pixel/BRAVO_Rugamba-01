@@ -1,60 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Truck, Star, Phone, Mail, MapPin, FileText, Edit2, Trash2, X, Clock, AlertTriangle, Zap, CheckCircle, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { supplyChainService } from '../../services/api';
+import { Pagination } from '../../components/Pagination';
 import './Vendors.css';
 
-interface Vendor {
-  id: number; name: string; contact: string; email: string; phone: string;
-  address: string; categories: string[]; leadTime: number; paymentTerms: string;
-  since: string; rating: number; status: 'Active' | 'Under Review' | 'Suspended';
-  onTime: number; quality: number; fillRate: number; avgResponse: string;
-  activePOs: number;
-  recentPOs: { code: string; amount: number; date: string; status: 'delivered' | 'late' | 'pending' }[];
-  issues: { date: string; detail: string }[];
-}
-
-const VENDORS: Vendor[] = [
-  {
-    id: 1, name: 'Dairy Fresh Co', contact: 'Ahmad Kazımov', email: 'orders@dairyfresh.az', phone: '+994 12 497 0100',
-    address: '123 Sənaye küçəsi, Bakı', categories: ['Dairy', 'Eggs', 'Butter'], leadTime: 2, paymentTerms: 'Net 30',
-    since: 'Jan 2023', rating: 4.2, status: 'Active', onTime: 94, quality: 96, fillRate: 98, avgResponse: '2.3 hrs', activePOs: 3,
-    recentPOs: [
-      { code: 'PO-001234', amount: 1237, date: 'Dec 20', status: 'delivered' },
-      { code: 'PO-001230', amount: 890, date: 'Dec 15', status: 'delivered' },
-      { code: 'PO-001225', amount: 2100, date: 'Dec 10', status: 'late' },
-    ],
-    issues: [],
-  },
-  {
-    id: 2, name: 'Produce World', contact: 'Leyla Əhmədova', email: 'orders@produceworld.az', phone: '+994 12 498 0200',
-    address: '456 Kənd təsərrüfatı pr., Sumqayıt', categories: ['Produce', 'Herbs'], leadTime: 1, paymentTerms: 'Net 15',
-    since: 'Mar 2023', rating: 3.8, status: 'Under Review', onTime: 89, quality: 92, fillRate: 95, avgResponse: '4.1 hrs', activePOs: 1,
-    recentPOs: [
-      { code: 'PO-001240', amount: 560, date: 'Dec 22', status: 'pending' },
-      { code: 'PO-001220', amount: 780, date: 'Dec 12', status: 'delivered' },
-    ],
-    issues: [
-      { date: 'Dec 15', detail: 'Shortage: 5 units Lettuce (credit pending)' },
-      { date: 'Dec 10', detail: 'Quality: Damaged tomatoes (replaced)' },
-    ],
-  },
-  {
-    id: 3, name: 'Bakery Supplies AZ', contact: 'Nicat Məmmədov', email: 'orders@bakerysupplies.az', phone: '+994 12 499 0300',
-    address: '789 Çörək zavodu küçəsi, Bakı', categories: ['Bakery', 'Flour', 'Yeast'], leadTime: 3, paymentTerms: 'Net 45',
-    since: 'Jun 2023', rating: 4.5, status: 'Active', onTime: 97, quality: 98, fillRate: 99, avgResponse: '1.5 hrs', activePOs: 2,
-    recentPOs: [
-      { code: 'PO-001245', amount: 1850, date: 'Dec 21', status: 'delivered' },
-      { code: 'PO-001235', amount: 920, date: 'Dec 14', status: 'delivered' },
-    ],
-    issues: [],
-  },
-];
-
-const EMPTY_FORM = { name: '', contact: '', email: '', phone: '', address: '', categories: ['Dairy'], leadTime: 2, paymentTerms: 'Net 30' };
+const EMPTY_FORM = { name: '', contact_person: '', email: '', phone: '', address: '', categories: ['Dairy'], lead_time: 2, payment_terms: 'Net 30' };
 
 export const Vendors: React.FC = () => {
   const navigate = useNavigate();
-  const [vendors, setVendors] = useState(VENDORS);
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -62,7 +18,35 @@ export const Vendors: React.FC = () => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const filtered = vendors.filter(v => {
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    fetchVendors(currentPage);
+  }, [currentPage]);
+
+  const fetchVendors = async (page = 1) => {
+    setLoading(true);
+    try {
+      const res = await supplyChainService.getVendors({ page });
+      const data = res.data;
+      if (data.results) {
+        setVendors(data.results);
+        setTotalCount(data.count);
+      } else {
+        const vendorList = Array.isArray(data) ? data : [];
+        setVendors(vendorList);
+        setTotalCount(vendorList.length);
+      }
+    } catch (err) {
+      console.error('Failed to fetch vendors', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = (vendors || []).filter(v => {
     if (search && !v.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (catFilter !== 'All' && !v.categories.includes(catFilter)) return false;
     if (statusFilter !== 'All' && v.status !== statusFilter) return false;
@@ -76,15 +60,28 @@ export const Vendors: React.FC = () => {
   const metricColor = (v: number) => v >= 95 ? 'var(--success)' : v >= 90 ? 'var(--primary)' : v >= 85 ? 'var(--warning)' : 'var(--danger)';
   const statusStyle = (s: string) => s === 'Active' ? { color: 'var(--success)', bg: 'rgba(119,188,31,0.1)' } : s === 'Under Review' ? { color: 'var(--warning)', bg: 'rgba(250,204,21,0.1)' } : { color: 'var(--danger)', bg: 'rgba(255,0,60,0.1)' };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.name || !form.email) return;
-    const newV: Vendor = { ...form, id: Date.now(), rating: 0, status: 'Active', since: 'Dec 2024', onTime: 0, quality: 0, fillRate: 0, avgResponse: '—', activePOs: 0, recentPOs: [], issues: [] };
-    setVendors([...vendors, newV]);
-    setShowForm(false);
-    setForm(EMPTY_FORM);
+    try {
+      await supplyChainService.addVendor(form);
+      fetchVendors();
+      setShowForm(false);
+      setForm(EMPTY_FORM);
+    } catch (err) {
+      alert('Failed to add vendor');
+    }
   };
 
-  const handleDelete = (id: number) => { if (confirm('Remove this vendor?')) setVendors(vendors.filter(v => v.id !== id)); };
+  const handleDelete = async (id: number) => { 
+    if (confirm('Remove this vendor?')) {
+      try {
+        await supplyChainService.deleteVendor(id);
+        fetchVendors();
+      } catch (err) {
+        alert('Failed to delete vendor');
+      }
+    }
+  };
 
   return (
     <div className="vendors-container page-container terminal-ui">
@@ -111,12 +108,12 @@ export const Vendors: React.FC = () => {
           <div className="panel-header"><h2>➕ ADD NEW VENDOR</h2><button className="btn-icon" onClick={() => setShowForm(false)}><X size={18} /></button></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div><label className="text-dim text-xs block mb-1">Company Name *</label><input className="terminal-input w-full" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-            <div><label className="text-dim text-xs block mb-1">Contact Person</label><input className="terminal-input w-full" value={form.contact} onChange={e => setForm({ ...form, contact: e.target.value })} /></div>
+            <div><label className="text-dim text-xs block mb-1">Contact Person</label><input className="terminal-input w-full" value={form.contact_person} onChange={e => setForm({ ...form, contact_person: e.target.value })} /></div>
             <div><label className="text-dim text-xs block mb-1">Email *</label><input className="terminal-input w-full" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
             <div><label className="text-dim text-xs block mb-1">Phone</label><input className="terminal-input w-full" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
             <div style={{ gridColumn: 'span 2' }}><label className="text-dim text-xs block mb-1">Address</label><input className="terminal-input w-full" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></div>
-            <div><label className="text-dim text-xs block mb-1">Lead Time (days)</label><input type="number" className="terminal-input w-full" value={form.leadTime} onChange={e => setForm({ ...form, leadTime: Number(e.target.value) })} /></div>
-            <div><label className="text-dim text-xs block mb-1">Payment Terms</label><select className="terminal-select w-full" value={form.paymentTerms} onChange={e => setForm({ ...form, paymentTerms: e.target.value })}><option>Net 15</option><option>Net 30</option><option>Net 45</option><option>Net 60</option></select></div>
+            <div><label className="text-dim text-xs block mb-1">Lead Time (days)</label><input type="number" className="terminal-input w-full" value={form.lead_time} onChange={e => setForm({ ...form, lead_time: Number(e.target.value) })} /></div>
+            <div><label className="text-dim text-xs block mb-1">Payment Terms</label><select className="terminal-select w-full" value={form.payment_terms} onChange={e => setForm({ ...form, payment_terms: e.target.value })}><option>Net 15</option><option>Net 30</option><option>Net 45</option><option>Net 60</option></select></div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button className="btn-primary" onClick={handleAdd}>CREATE VENDOR</button>
@@ -160,7 +157,7 @@ export const Vendors: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={14} className="text-primary" /><span className="text-muted" style={{ fontSize: '0.85rem' }}>{v.phone}</span></div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Mail size={14} className="text-primary" /><span className="text-muted" style={{ fontSize: '0.85rem' }}>{v.email}</span></div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><MapPin size={14} className="text-primary" /><span className="text-muted" style={{ fontSize: '0.85rem' }}>{v.address}</span></div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Clock size={14} className="text-primary" /><span className="text-muted" style={{ fontSize: '0.85rem' }}>Lead Time: {v.leadTime} days │ {v.paymentTerms}</span></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Clock size={14} className="text-primary" /><span className="text-muted" style={{ fontSize: '0.85rem' }}>Lead Time: {v.lead_time} days │ {v.payment_terms}</span></div>
                   </div>
 
                   {/* Performance Metrics */}
@@ -170,7 +167,7 @@ export const Vendors: React.FC = () => {
                       <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--text-dim)', letterSpacing: 1 }}>PERFORMANCE METRICS (LAST 90 DAYS)</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
-                      {[{ label: 'On-Time Delivery', val: v.onTime }, { label: 'Quality Acceptance', val: v.quality }, { label: 'Fill Rate', val: v.fillRate }].map(m => (
+                      {[{ label: 'On-Time Delivery', val: v.on_time_rate }, { label: 'Quality Acceptance', val: v.quality_score }, { label: 'Fill Rate', val: v.fill_rate }].map(m => (
                         <div key={m.label}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                             <span className="text-muted" style={{ fontSize: '0.75rem' }}>{m.label}</span>
@@ -181,7 +178,7 @@ export const Vendors: React.FC = () => {
                       ))}
                       <div>
                         <span className="text-muted" style={{ fontSize: '0.75rem' }}>Avg Response</span>
-                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-main)', marginTop: 4 }}>{v.avgResponse}</div>
+                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-main)', marginTop: 4 }}>{v.avg_response}</div>
                       </div>
                     </div>
                   </div>
@@ -192,8 +189,8 @@ export const Vendors: React.FC = () => {
                       <FileText size={16} className="text-primary" />
                       <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--text-dim)', letterSpacing: 1 }}>RECENT PURCHASE ORDERS</span>
                     </div>
-                    {v.recentPOs.map((po, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: i < v.recentPOs.length - 1 ? '1px dashed var(--border-glass)' : 'none' }}>
+                    {v.recent_pos?.map((po: any, i: number) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: i < (v.recent_pos?.length || 0) - 1 ? '1px dashed var(--border-glass)' : 'none' }}>
                         <span className="text-primary" style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.8rem', minWidth: 90 }}>{po.code}</span>
                         <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, minWidth: 70 }}>${po.amount.toLocaleString()}</span>
                         <span className="text-muted" style={{ fontSize: '0.8rem' }}>{po.date}</span>
@@ -207,13 +204,13 @@ export const Vendors: React.FC = () => {
                   </div>
 
                   {/* Issues */}
-                  {v.issues.length > 0 && (
+                  {(v.issues?.length || 0) > 0 && (
                     <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border-glass)', background: 'rgba(255,0,60,0.03)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                         <AlertTriangle size={16} className="text-warning" />
-                        <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--warning)', letterSpacing: 1 }}>OPEN ISSUES ({v.issues.length})</span>
+                        <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--warning)', letterSpacing: 1 }}>OPEN ISSUES ({v.issues?.length || 0})</span>
                       </div>
-                      {v.issues.map((iss, i) => (
+                      {v.issues?.map((iss: any, i: number) => (
                         <div key={i} style={{ display: 'flex', gap: 12, padding: '6px 0', fontSize: '0.8rem' }}>
                           <span className="text-dim" style={{ minWidth: 55 }}>{iss.date}</span>
                           <span className="text-muted">{iss.detail}</span>
@@ -236,6 +233,14 @@ export const Vendors: React.FC = () => {
           );
         })}
       </div>
+
+      <Pagination 
+        currentPage={currentPage}
+        totalCount={totalCount}
+        pageSize={10}
+        onPageChange={setCurrentPage}
+        loading={loading}
+      />
 
       {/* AI Insights */}
       <div className="panel" style={{ marginTop: 20 }}>

@@ -7,9 +7,9 @@ import './Dashboard.css';
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const role = user?.role ?? 'STAFF';
+  const role = user?.role ?? 'staff';
 
-  if (role === 'ADMIN') return <AdminDashboard />;
-  if (role === 'MANAGER') return <ManagerDashboard />;
+  if (role === 'admin') return <AdminDashboard />;
+  if (role === 'manager') return <ManagerDashboard />;
   return <StaffDashboard />;
 };

@@ -1,17 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Zap, Users, Clock, CheckSquare, Target, DollarSign, MessageSquare, Coffee, ArrowUpRight, ArrowDownRight, ShieldAlert } from 'lucide-react';
+import { userService, taskService } from '../../services/api';
 
 export const ManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [breakApproved, setBreakApproved] = useState<Record<number, boolean>>({});
 
-  const staff = [
-    { id: 1, name: 'Aysel Əliyeva', status: 'on-shift', clockedIn: '7:02 AM', tasks: [{ name: 'Stock check - Dairy', done: true }, { name: 'Receiving PO-001234', done: false }], waste: 12, discount: 15, transfer: 0 },
-    { id: 2, name: 'Nicat İsmayılov', status: 'on-shift', clockedIn: '8:15 AM', tasks: [{ name: 'FEFO rotation', done: true }, { name: 'Waste log', done: true }], waste: 8, discount: 0, transfer: 30 },
-    { id: 3, name: 'Günel Hüseynova', status: 'on-break', clockedIn: '7:30 AM', tasks: [{ name: 'Inventory count', done: false }], waste: 0, discount: 0, transfer: 0 },
-    { id: 4, name: 'Rəşad Quliyev', status: 'off-shift', clockedIn: '—', tasks: [{ name: 'Evening shift prep', done: false }], waste: 0, discount: 0, transfer: 0 },
-  ];
+  const [staff, setStaff] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [usersRes, tasksRes] = await Promise.all([
+        userService.getUsers(),
+        taskService.getTasks()
+      ]);
+      setStaff(Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data.results || []));
+      setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : (tasksRes.data.results || []));
+    } catch (err) {
+      console.error('Failed to fetch manager dashboard data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const pendingRequests = [
     { id: 1, staff: 'Günel Hüseynova', type: 'break', detail: 'Requested break at 11:30 AM', time: '10:28 AM' },
@@ -107,28 +125,29 @@ export const ManagerDashboard: React.FC = () => {
               <tr><th>Staff</th><th>Status</th><th>Today's Tasks</th><th>Actions Taken</th></tr>
             </thead>
             <tbody>
-              {staff.map(s => (
-                <tr key={s.id}>
-                  <td>
-                    <div className="font-bold text-main">{s.name}</div>
-                    {s.clockedIn !== '—' && <div className="text-dim" style={{ fontSize: '0.7rem' }}>Clocked: {s.clockedIn}</div>}
-                  </td>
-                  <td><span style={{ color: statusColor(s.status), fontWeight: 800, fontSize: '0.8rem' }}>{statusLabel(s.status)}</span></td>
-                  <td>
-                    {s.tasks.map((t, i) => (
-                      <div key={i} style={{ fontSize: '0.8rem', marginBottom: 2 }}>
-                        <span>{t.done ? '✅' : '🔄'} {t.name}</span>
-                      </div>
-                    ))}
-                  </td>
-                  <td className="text-muted" style={{ fontSize: '0.8rem' }}>
-                    {s.waste > 0 && <div>Waste: {s.waste} units</div>}
-                    {s.discount > 0 && <div>Discount: {s.discount} units</div>}
-                    {s.transfer > 0 && <div>Transfer: {s.transfer} units</div>}
-                    {s.waste === 0 && s.discount === 0 && s.transfer === 0 && <span className="text-dim">No actions yet</span>}
-                  </td>
-                </tr>
-              ))}
+              {staff.map(s => {
+                const staffTasks = tasks.filter(t => t.assigned_to === s.id);
+                return (
+                  <tr key={s.id}>
+                    <td>
+                      <div className="font-bold text-main">{s.first_name} {s.last_name}</div>
+                      {s.last_login && <div className="text-dim" style={{ fontSize: '0.7rem' }}>Last login: {new Date(s.last_login).toLocaleTimeString()}</div>}
+                    </td>
+                    <td><span style={{ color: statusColor(s.status), fontWeight: 800, fontSize: '0.8rem' }}>{statusLabel(s.status)}</span></td>
+                    <td>
+                      {staffTasks.slice(0, 2).map((t, i) => (
+                        <div key={i} style={{ fontSize: '0.8rem', marginBottom: 2 }}>
+                          <span>{t.status === 'completed' ? '✅' : '🔄'} {t.title}</span>
+                        </div>
+                      ))}
+                      {staffTasks.length > 2 && <div className="text-xs text-dim">+{staffTasks.length - 2} more</div>}
+                    </td>
+                    <td className="text-muted" style={{ fontSize: '0.8rem' }}>
+                      <span className="text-dim">Tracking actions...</span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
