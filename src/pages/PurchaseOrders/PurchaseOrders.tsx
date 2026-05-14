@@ -1,17 +1,64 @@
-import React from 'react';
-import { FileText, Plus, Search, Eye, RefreshCw, CheckCircle, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, Plus, Eye, RefreshCw, CheckCircle, Trash2 } from 'lucide-react';
 import './PurchaseOrders.css';
 
+type PoTab = 'ACTIVE' | 'DELIVERED' | 'VENDOR';
+
 export const PurchaseOrders: React.FC = () => {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<PoTab>('ACTIVE');
   return (
     <div className="po-container page-container terminal-ui">
       <div className="flex gap-4 mb-4">
-        <button className="btn-primary flex-1">📄 ACTIVE POs</button>
-        <button className="btn-secondary flex-1">✅ DELIVERED</button>
-        <button className="btn-secondary flex-1">📊 VENDOR PERFORMANCE</button>
+        <button
+          type="button"
+          className={`btn-primary flex-1${tab === 'ACTIVE' ? '' : ' opacity-70'}`}
+          onClick={() => setTab('ACTIVE')}
+        >
+          📄 ACTIVE POs
+        </button>
+        <button
+          type="button"
+          className={`btn-secondary flex-1${tab === 'DELIVERED' ? ' border-primary' : ''}`}
+          onClick={() => setTab('DELIVERED')}
+        >
+          ✅ DELIVERED
+        </button>
+        <button
+          type="button"
+          className={`btn-secondary flex-1${tab === 'VENDOR' ? ' border-primary' : ''}`}
+          onClick={() => setTab('VENDOR')}
+        >
+          📊 VENDOR PERFORMANCE
+        </button>
       </div>
 
       <div className="main-grid">
+        {tab === 'VENDOR' ? (
+          <div className="panel col-span-2">
+            <div className="panel-header">
+              <h2>VENDOR PERFORMANCE</h2>
+            </div>
+            <p className="text-muted mb-4">
+              On-time delivery, fill rate, and quality scores are synced from receiving logs. Open the vendor directory for contracts and contacts.
+            </p>
+            <button type="button" className="btn-primary" onClick={() => navigate('/vendors')}>
+              OPEN VENDOR DIRECTORY
+            </button>
+          </div>
+        ) : tab === 'DELIVERED' ? (
+          <div className="panel col-span-2">
+            <div className="panel-header">
+              <h2>DELIVERED PURCHASE ORDERS</h2>
+            </div>
+            <p className="text-muted mb-4">Recent closed POs appear here for audit. Demo: PO-001100 (Dairy Fresh Co) — delivered Dec 14.</p>
+            <ul className="text-sm text-main" style={{ lineHeight: 1.8 }}>
+              <li>PO-001100 · Dairy Fresh Co · $1,890 · ✅ Received</li>
+              <li>PO-001099 · Produce World · $2,100 · ✅ Received</li>
+            </ul>
+          </div>
+        ) : (
         <div className="panel col-span-2">
           <div className="panel-header">
             <h2>ACTIVE PURCHASE ORDERS</h2>
@@ -106,6 +153,7 @@ export const PurchaseOrders: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
 
         <div className="panel">
           <div className="panel-header">

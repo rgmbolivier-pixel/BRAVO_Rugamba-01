@@ -1,144 +1,112 @@
-import React from 'react';
-import { Search, MapPin, Users, Clock, Plus, BarChart2, Edit2, Settings, Power } from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Search, MapPin, Users, Clock, Plus, BarChart2, Edit2, Trash2, X, Power } from 'lucide-react';
 import './Branches.css';
 
+interface Branch {
+  id: number; name: string; address: string; city: string;
+  manager: string; phone: string; status: 'Active' | 'Inactive';
+  staff: number; hours: string; waste: string; saved: string; score: number;
+}
+
+const INIT: Branch[] = [
+  { id: 1, name: 'NIZAMI STORE', address: 'Nizami küçəsi 45', city: 'Bakı', manager: 'Əli Həsənov', phone: '+994 12 497 0100', status: 'Active', staff: 8, hours: '7am - 11pm', waste: '$1,240 ▼12%', saved: '$3,450 ▲8%', score: 94 },
+  { id: 2, name: 'FOUNTAIN SQUARE', address: 'Füzuli küçəsi 12', city: 'Bakı', manager: 'Leyla Məmmədova', phone: '+994 12 492 0200', status: 'Active', staff: 6, hours: '8am - 10pm', waste: '$1,890 ▲5%', saved: '$2,100 ▼3%', score: 88 },
+  { id: 3, name: 'WHITE CITY BRANCH', address: 'Həsən Əliyev küçəsi 88', city: 'Bakı', manager: 'Rəşad Quliyev', phone: '+994 12 404 0300', status: 'Inactive', staff: 4, hours: '9am - 9pm', waste: '$890 ▼20%', saved: '$1,200 ▲15%', score: 76 },
+];
+
+const EMPTY = { name: '', address: '', city: 'Bakı', manager: '', phone: '', status: 'Active' as const, staff: 0, hours: '8am - 10pm', waste: '$0', saved: '$0', score: 0 };
+
 export const Branches: React.FC = () => {
+  const navigate = useNavigate();
+  const [branches, setBranches] = useState<Branch[]>(INIT);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [form, setForm] = useState(EMPTY);
+  const [search, setSearch] = useState('');
+
+  const openAdd = () => { setForm(EMPTY); setEditId(null); setShowForm(true); };
+  const openEdit = (b: Branch) => { setForm({ name: b.name, address: b.address, city: b.city, manager: b.manager, phone: b.phone, status: b.status, staff: b.staff, hours: b.hours, waste: b.waste, saved: b.saved, score: b.score }); setEditId(b.id); setShowForm(true); };
+  const handleDelete = (id: number) => { if (confirm('Delete this branch?')) setBranches(branches.filter(b => b.id !== id)); };
+  const handleSave = () => {
+    if (!form.name || !form.address) return;
+    if (editId) {
+      setBranches(branches.map(b => b.id === editId ? { ...form, id: editId } : b));
+    } else {
+      setBranches([...branches, { ...form, id: Date.now() }]);
+    }
+    setShowForm(false); setEditId(null);
+  };
+
+  const filtered = branches.filter(b => !search || b.name.toLowerCase().includes(search.toLowerCase()) || b.city.toLowerCase().includes(search.toLowerCase()));
+
   return (
     <div className="branches-container page-container terminal-ui">
-      <div className="flex gap-4 mb-4">
-        <div className="input-with-icon flex-2">
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <div className="input-with-icon" style={{ flex: 2, minWidth: 200 }}>
           <Search className="input-icon" size={18} />
-          <input type="text" className="terminal-input w-full" placeholder="Search branches..." />
+          <input type="text" className="terminal-input w-full" placeholder="Search branches..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="filters flex-1 flex gap-2">
-          <select className="terminal-select flex-1">
-            <option>Status: All</option>
-            <option>Active</option>
-            <option>Inactive</option>
-          </select>
-          <select className="terminal-select flex-1">
-            <option>Region: All</option>
-            <option>North</option>
-            <option>South</option>
-            <option>East</option>
-            <option>West</option>
-          </select>
-        </div>
-        <button className="btn-primary"><Plus size={16} className="mr-1" /> ADD BRANCH</button>
+        <button className="btn-primary" onClick={openAdd}><Plus size={16} /> ADD BRANCH</button>
       </div>
 
-      <div className="main-grid">
-        <div className="panel col-span-2">
-          <div className="branch-list">
-            <div className="branch-card border-l-4 border-success p-4 mb-4 bg-black bg-opacity-40">
-              <div className="flex justify-between items-center mb-3 pb-2 border-b border-glass">
-                <h3 className="text-xl font-bold flex items-center gap-2 m-0">
-                  <MapPin className="text-primary" /> DOWNTOWN STORE
-                </h3>
-                <span className="text-success flex items-center gap-1"><span className="status-dot online"></span> Active</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm text-muted mb-4">
-                <div>
-                  <div className="mb-1"><strong className="text-main">Location:</strong> 123 Main St, New York, NY 10001</div>
-                  <div className="mb-1"><strong className="text-main">Manager:</strong> Jane Smith (jane@downtown.com)</div>
-                  <div><strong className="text-main">Phone:</strong> (212) 555-0100</div>
-                </div>
-                <div>
-                  <div className="mb-1 flex items-center gap-1"><Users size={14} className="text-primary" /> <strong className="text-main">Staff:</strong> 8</div>
-                  <div className="flex items-center gap-1"><Clock size={14} className="text-primary" /> <strong className="text-main">Hours:</strong> 7am - 11pm Daily</div>
-                </div>
-              </div>
-              <div className="bg-primary-dark p-3 rounded mb-4 flex justify-between items-center text-sm font-mono border border-primary-dark">
-                <div className="flex gap-4">
-                  <span>Waste: <span className="text-primary">$1,240 ▼12%</span></span>
-                  <span>Saved: <span className="text-primary">$3,450 ▲8%</span></span>
-                </div>
-                <div className="text-success font-bold text-lg">Score: 94/100</div>
-              </div>
-              <div className="flex gap-2">
-                <button className="btn-secondary small flex-1 justify-center">VIEW DETAILS</button>
-                <button className="btn-secondary small flex-1 justify-center"><Edit2 size={14} className="mr-1" /> EDIT</button>
-                <button className="btn-secondary small flex-1 justify-center"><Users size={14} className="mr-1" /> STAFF</button>
-                <button className="btn-secondary small flex-1 justify-center text-danger border-danger"><Power size={14} className="mr-1" /> DEACTIVATE</button>
-                <button className="btn-primary small flex-1 justify-center"><BarChart2 size={14} className="mr-1" /> ANALYTICS</button>
-              </div>
-            </div>
-
-            <div className="branch-card border-l-4 border-success p-4 mb-4 bg-black bg-opacity-40">
-              <div className="flex justify-between items-center mb-3 pb-2 border-b border-glass">
-                <h3 className="text-xl font-bold flex items-center gap-2 m-0">
-                  <MapPin className="text-primary" /> UPTOWN STORE
-                </h3>
-                <span className="text-success flex items-center gap-1"><span className="status-dot online"></span> Active</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm text-muted mb-4">
-                <div>
-                  <div className="mb-1"><strong className="text-main">Location:</strong> 456 Broadway, New York, NY 10002</div>
-                  <div className="mb-1"><strong className="text-main">Manager:</strong> Mike Johnson (mike@uptown.com)</div>
-                  <div><strong className="text-main">Phone:</strong> (212) 555-0101</div>
-                </div>
-                <div>
-                  <div className="mb-1 flex items-center gap-1"><Users size={14} className="text-primary" /> <strong className="text-main">Staff:</strong> 6</div>
-                  <div className="flex items-center gap-1"><Clock size={14} className="text-primary" /> <strong className="text-main">Hours:</strong> 8am - 10pm Daily</div>
-                </div>
-              </div>
-              <div className="bg-primary-dark p-3 rounded mb-4 flex justify-between items-center text-sm font-mono border border-primary-dark">
-                <div className="flex gap-4">
-                  <span>Waste: <span className="text-warning">$1,890 ▲5%</span></span>
-                  <span>Saved: <span className="text-warning">$2,100 ▼3%</span></span>
-                </div>
-                <div className="text-success font-bold text-lg">Score: 88/100</div>
-              </div>
-              <div className="flex gap-2">
-                <button className="btn-secondary small flex-1 justify-center">VIEW DETAILS</button>
-                <button className="btn-secondary small flex-1 justify-center"><Edit2 size={14} className="mr-1" /> EDIT</button>
-                <button className="btn-secondary small flex-1 justify-center"><Users size={14} className="mr-1" /> STAFF</button>
-                <button className="btn-secondary small flex-1 justify-center text-danger border-danger"><Power size={14} className="mr-1" /> DEACTIVATE</button>
-                <button className="btn-primary small flex-1 justify-center"><BarChart2 size={14} className="mr-1" /> ANALYTICS</button>
-              </div>
-            </div>
+      {showForm && (
+        <div className="panel mb-4">
+          <div className="panel-header">
+            <h2>{editId ? '✏️ EDIT BRANCH' : '➕ ADD NEW BRANCH'}</h2>
+            <button className="btn-icon" onClick={() => setShowForm(false)}><X size={18} /></button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+            <div><label className="text-dim text-xs block mb-1">Branch Name</label><input className="terminal-input w-full" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+            <div><label className="text-dim text-xs block mb-1">Address</label><input className="terminal-input w-full" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></div>
+            <div><label className="text-dim text-xs block mb-1">City</label><input className="terminal-input w-full" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} /></div>
+            <div><label className="text-dim text-xs block mb-1">Manager</label><input className="terminal-input w-full" value={form.manager} onChange={e => setForm({ ...form, manager: e.target.value })} /></div>
+            <div><label className="text-dim text-xs block mb-1">Phone</label><input className="terminal-input w-full" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+            <div><label className="text-dim text-xs block mb-1">Status</label><select className="terminal-select w-full" value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'Active' | 'Inactive' })}><option>Active</option><option>Inactive</option></select></div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+            <button className="btn-primary" onClick={handleSave}>{editId ? 'UPDATE BRANCH' : 'CREATE BRANCH'}</button>
+            <button className="btn-secondary" onClick={() => setShowForm(false)}>CANCEL</button>
           </div>
         </div>
+      )}
 
-        <div className="panel">
-          <div className="panel-header">
-            <h2 className="flex items-center gap-2"><Plus size={18} className="text-primary" /> ADD NEW BRANCH</h2>
-          </div>
-          <form className="add-branch-form text-sm">
-            <div className="form-group mb-3">
-              <label className="text-muted block mb-1">Store Name:</label>
-              <input type="text" className="terminal-input w-full" placeholder="e.g. Westside Store" />
-            </div>
-            <div className="form-group mb-3">
-              <label className="text-muted block mb-1">Address:</label>
-              <input type="text" className="terminal-input w-full" placeholder="Street address" />
-            </div>
-            <div className="form-group mb-3">
-              <label className="text-muted block mb-1">City:</label>
-              <input type="text" className="terminal-input w-full" placeholder="City" />
-            </div>
-            <div className="form-group mb-3">
-              <label className="text-muted block mb-1">Phone:</label>
-              <input type="text" className="terminal-input w-full" placeholder="(555) 555-5555" />
-            </div>
-            <div className="form-group mb-3">
-              <label className="text-muted block mb-1">Manager Email:</label>
-              <input type="email" className="terminal-input w-full" placeholder="manager@store.com" />
-            </div>
-            <div className="form-group mb-4">
-              <label className="text-muted block mb-1">Opening Hours:</label>
-              <div className="flex gap-2 items-center">
-                <input type="time" className="terminal-input flex-1" defaultValue="08:00" />
-                <span className="text-dim">to</span>
-                <input type="time" className="terminal-input flex-1" defaultValue="22:00" />
+      <div className="panel">
+        <div className="panel-header">
+          <h2>🏢 BRANCHES ({filtered.length})</h2>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {filtered.map(b => (
+            <div key={b.id} className="branch-card" style={{ padding: 20, border: '1px solid var(--border-glass)', borderLeft: `4px solid ${b.status === 'Active' ? 'var(--success)' : 'var(--text-dim)'}`, background: 'var(--bg-card)', borderRadius: 8, opacity: b.status === 'Inactive' ? 0.6 : 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border-glass)' }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <MapPin className="text-primary" size={18} /> {b.name}
+                </h3>
+                <span className={b.status === 'Active' ? 'text-success' : 'text-dim'} style={{ fontWeight: 700, fontSize: '0.8rem' }}>● {b.status.toUpperCase()}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: '0.85rem', marginBottom: 16 }}>
+                <div>
+                  <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}><strong className="text-main">Location:</strong> {b.address}, {b.city}</div>
+                  <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}><strong className="text-main">Manager:</strong> {b.manager}</div>
+                  <div style={{ color: 'var(--text-muted)' }}><strong className="text-main">Phone:</strong> {b.phone}</div>
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}><Users size={14} className="text-primary" /> <strong className="text-main">Staff:</strong> <span className="text-muted">{b.staff}</span></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={14} className="text-primary" /> <strong className="text-main">Hours:</strong> <span className="text-muted">{b.hours}</span></div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-glass)', borderRadius: 6, marginBottom: 16, fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
+                <span>Waste: <span className="text-primary">{b.waste}</span></span>
+                <span>Saved: <span className="text-primary">{b.saved}</span></span>
+                <span style={{ fontWeight: 800, color: b.score >= 90 ? 'var(--success)' : b.score >= 80 ? 'var(--warning)' : 'var(--danger)' }}>Score: {b.score}/100</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button className="btn-secondary small" style={{ flex: 1 }} onClick={() => openEdit(b)}><Edit2 size={14} /> EDIT</button>
+                <button className="btn-secondary small" style={{ flex: 1 }} onClick={() => navigate('/analytics')}><BarChart2 size={14} /> ANALYTICS</button>
+                <button className="btn-secondary small text-danger" style={{ flex: 1 }} onClick={() => handleDelete(b.id)}><Trash2 size={14} /> DELETE</button>
               </div>
             </div>
-            
-            <div className="flex flex-col gap-2 mt-4">
-              <button type="button" className="btn-primary w-full justify-center">CREATE BRANCH</button>
-              <button type="button" className="btn-secondary w-full justify-center">CANCEL</button>
-            </div>
-          </form>
+          ))}
         </div>
       </div>
     </div>

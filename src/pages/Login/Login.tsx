@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, type UserRole } from '../../context/AuthContext';
 import { Terminal, Lock, Mail, Server } from 'lucide-react';
@@ -7,8 +7,12 @@ import './Login.css';
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('admin@bravoos.com');
   const [password, setPassword] = useState('admin123');
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) navigate('/dashboard', { replace: true });
+  }, [user, navigate]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
