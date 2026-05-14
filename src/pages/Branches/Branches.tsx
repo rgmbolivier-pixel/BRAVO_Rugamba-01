@@ -15,18 +15,26 @@ const INIT: Branch[] = [
   { id: 3, name: 'WHITE CITY BRANCH', address: 'Həsən Əliyev küçəsi 88', city: 'Bakı', manager: 'Rəşad Quliyev', phone: '+994 12 404 0300', status: 'Inactive', staff: 4, hours: '9am - 9pm', waste: '$890 ▼20%', saved: '$1,200 ▲15%', score: 76 },
 ];
 
-const EMPTY = { name: '', address: '', city: 'Bakı', manager: '', phone: '', status: 'Active' as const, staff: 0, hours: '8am - 10pm', waste: '$0', saved: '$0', score: 0 };
+const EMPTY: Omit<Branch, 'id'> = { name: '', address: '', city: 'Bakı', manager: '', phone: '', status: 'Active', staff: 0, hours: '8am - 10pm', waste: '$0', saved: '$0', score: 0 };
 
 export const Branches: React.FC = () => {
   const navigate = useNavigate();
   const [branches, setBranches] = useState<Branch[]>(INIT);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState(EMPTY);
+  const [form, setForm] = useState<Omit<Branch, 'id'>>(EMPTY);
   const [search, setSearch] = useState('');
 
   const openAdd = () => { setForm(EMPTY); setEditId(null); setShowForm(true); };
-  const openEdit = (b: Branch) => { setForm({ name: b.name, address: b.address, city: b.city, manager: b.manager, phone: b.phone, status: b.status, staff: b.staff, hours: b.hours, waste: b.waste, saved: b.saved, score: b.score }); setEditId(b.id); setShowForm(true); };
+  const openEdit = (b: Branch) => { 
+    setForm({ 
+      name: b.name, address: b.address, city: b.city, manager: b.manager, 
+      phone: b.phone, status: b.status, staff: b.staff, hours: b.hours, 
+      waste: b.waste, saved: b.saved, score: b.score 
+    }); 
+    setEditId(b.id); 
+    setShowForm(true); 
+  };
   const handleDelete = (id: number) => { if (confirm('Delete this branch?')) setBranches(branches.filter(b => b.id !== id)); };
   const handleSave = () => {
     if (!form.name || !form.address) return;

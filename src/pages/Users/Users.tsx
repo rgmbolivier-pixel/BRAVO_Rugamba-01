@@ -16,18 +16,25 @@ const INIT: User[] = [
   { id: 6, name: 'Günel Hüseynova', email: 'gunel@bravoos.az', role: 'STAFF', branch: 'White City', phone: '+994 50 678 9012', status: 'Inactive', lastLogin: '5 days ago' },
 ];
 
-const EMPTY = { name: '', email: '', role: 'STAFF' as const, branch: 'Nizami Store', phone: '', status: 'Active' as const, lastLogin: 'Never' };
+const EMPTY: Omit<User, 'id'> = { name: '', email: '', role: 'STAFF', branch: 'Nizami Store', phone: '', status: 'Active', lastLogin: 'Never' };
 
 export const Users: React.FC = () => {
   const [users, setUsers] = useState<User[]>(INIT);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState(EMPTY);
+  const [form, setForm] = useState<Omit<User, 'id'>>(EMPTY);
   const [roleFilter, setRoleFilter] = useState('All');
   const [search, setSearch] = useState('');
 
   const openAdd = () => { setForm(EMPTY); setEditId(null); setShowForm(true); };
-  const openEdit = (u: User) => { setForm({ name: u.name, email: u.email, role: u.role, branch: u.branch, phone: u.phone, status: u.status, lastLogin: u.lastLogin }); setEditId(u.id); setShowForm(true); };
+  const openEdit = (u: User) => { 
+    setForm({ 
+      name: u.name, email: u.email, role: u.role, branch: u.branch, 
+      phone: u.phone, status: u.status, lastLogin: u.lastLogin 
+    }); 
+    setEditId(u.id); 
+    setShowForm(true); 
+  };
   const handleDelete = (id: number) => { if (confirm('Delete this user?')) setUsers(users.filter(u => u.id !== id)); };
   const handleSave = () => {
     if (!form.name || !form.email) return;
