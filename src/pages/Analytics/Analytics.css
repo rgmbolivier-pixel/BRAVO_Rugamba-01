@@ -123,6 +123,48 @@
   font-weight: bold;
 }
 
+.wasted-products-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wasted-product-item {
+  display: flex;
+  gap: 15px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  align-items: center;
+}
+
+.product-rank {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--primary);
+  min-width: 30px;
+  text-align: center;
+}
+
+.product-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.product-name {
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.product-details {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .roi-calculator {
   display: flex;
   flex-direction: column;
@@ -155,4 +197,26 @@
   font-size: 0.8rem;
   margin-bottom: 5px;
   color: var(--text-main);
+}
+
+@media (max-width: 1024px) {
+  .main-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .main-grid .col-span-2 {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+  .main-grid .col-span-2 {
+    grid-column: 1;
+  }
+  .header-stats {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
 }
