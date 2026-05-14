@@ -5,7 +5,7 @@ import {
   FileText, CreditCard, LayoutDashboard, Package, 
   AlertTriangle, ArrowRightLeft, Clock, Trash2, 
   Download, CheckSquare, Settings as SettingsIcon,
-  LogOut, Terminal
+  LogOut, Terminal, Heart
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -33,11 +33,13 @@ export const Sidebar: React.FC = () => {
       items.push({ path: '/receiving', icon: Download, label: 'RECEIVING' });
       items.push({ path: '/inventory', icon: Package, label: 'INVENTORY' });
       items.push({ path: '/alerts', icon: AlertTriangle, label: 'ALERTS' });
+      items.push({ path: '/donations', icon: Heart, label: 'DONATIONS' });
     }
 
     // Manager items
     if (user.role === 'MANAGER') {
       items.push({ path: '/dashboard', icon: LayoutDashboard, label: 'DASHBOARD' });
+      items.push({ path: '/analytics', icon: BarChart3, label: 'ANALYTICS' });
       items.push({ path: '/inventory', icon: Package, label: 'INVENTORY' });
       items.push({ path: '/alerts', icon: AlertTriangle, label: 'ALERTS' });
       items.push({ path: '/transfers', icon: ArrowRightLeft, label: 'TRANSFERS' });
@@ -45,6 +47,7 @@ export const Sidebar: React.FC = () => {
       items.push({ path: '/receiving', icon: Download, label: 'RECEIVING' });
       items.push({ path: '/tasks', icon: CheckSquare, label: 'TASKS' });
       items.push({ path: '/purchase-orders', icon: FileText, label: 'PURCHASE ORDERS' });
+      items.push({ path: '/donations', icon: Heart, label: 'DONATIONS' });
     }
 
     // Admin items
@@ -64,6 +67,7 @@ export const Sidebar: React.FC = () => {
       items.push({ path: '/waste-log', icon: Trash2, label: 'WASTE LOG' });
       items.push({ path: '/receiving', icon: Download, label: 'RECEIVING' });
       
+      items.push({ path: '/donations', icon: Heart, label: 'DONATIONS' });
       items.push({ path: '/settings', icon: SettingsIcon, label: 'SETTINGS' });
     }
 
