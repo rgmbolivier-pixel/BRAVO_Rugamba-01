@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Django/Python backend ignores
+02/venv/
+02/.env
+02/**/__pycache__/
+02/*.log
+02/db.sqlite3
+02/*.sql
+02/static/
+02/media/
+

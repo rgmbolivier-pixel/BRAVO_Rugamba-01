@@ -1,0 +1,126 @@
+﻿/* ── TestOS Design System ─────────────────────────────────── */
+/* Font loaded via <link> in layout.tsx to avoid Turbopack @import ordering issues */
+
+@import "tailwindcss";
+
+:root {
+  --bg-void:      #000000;
+  --bg-panel:     #050505;
+  --bg-elev:      #0a0a0a;
+  --bg-hover:     #0f1a0f;
+  --bg-active:    #0a1f0a;
+  --green:        #00ff41;
+  --green-bright: #39ff70;
+  --green-dim:    #00b82e;
+  --green-deep:   #006b1b;
+  --fg-1:         #e8ffe8;
+  --fg-2:         #b8c4b8;
+  --fg-3:         #6b7a6b;
+  --fg-4:         #3a4a3a;
+  --fg-5:         #1a2a1a;
+  --ok:           #00ff41;
+  --warn:         #ffcc00;
+  --err:          #ff3344;
+  --info:         #00ccff;
+  --border-1:     #1a2a1a;
+  --border-2:     #2a3a2a;
+  --font-mono:    'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: #000;
+  color: #e8ffe8;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  font-variant-ligatures: none;
+}
+
+a { color: var(--green); text-decoration: none; }
+button { font-family: var(--font-mono); }
+select { font-family: var(--font-mono); }
+input  { font-family: var(--font-mono); }
+
+/* scrollbar */
+::-webkit-scrollbar         { width: 4px; height: 4px; }
+::-webkit-scrollbar-track   { background: #000; }
+::-webkit-scrollbar-thumb   { background: #1a2a1a; }
+::-webkit-scrollbar-thumb:hover { background: #2a3a2a; }
+
+/* animations */
+@keyframes bos-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+@keyframes bos-cursor {
+  0%, 49%  { opacity: 1; }
+  50%, 100%{ opacity: 0; }
+}
+@keyframes bos-scan {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(100vh); }
+}
+
+.bos-pulse  { animation: bos-pulse  1.4s ease-in-out infinite; }
+.bos-cursor { animation: bos-cursor 1.06s step-end infinite; }
+
+/* ── entrance animations ────────────────────────────────────── */
+@keyframes bos-slideup {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes bos-slideleft {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes bos-scalein {
+  from { opacity: 0; transform: scale(0.93); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes bos-popin {
+  0%   { opacity: 0; transform: scale(0.88) translateY(10px); }
+  70%  { transform: scale(1.02) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* bar grow (for category/margin bars) */
+@keyframes bos-bar-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* skeleton shimmer */
+@keyframes bos-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.bos-skeleton {
+  background: linear-gradient(90deg, #0a0a0a 25%, #141a14 50%, #0a0a0a 75%);
+  background-size: 200% 100%;
+  animation: bos-shimmer 1.6s ease-in-out infinite;
+  border: 1px solid #1a2a1a;
+}
+
+/* nav link hover */
+.bos-nav-link        { transition: color .12s, border-color .12s; }
+.bos-nav-link:hover  { color: #00ff41 !important; }
+
+/* toast slide-in */
+@keyframes bos-toast {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.bos-toast { animation: bos-toast .18s ease-out; }
+
+/* fade-in for panels */
+@keyframes bos-fadein {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bos-fadein { animation: bos-fadein .22s ease-out; }
+
+/* option bg fix */
+option { background: #050505; color: #e8ffe8; }
