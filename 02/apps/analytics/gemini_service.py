@@ -1,10 +1,17 @@
-import google.generativeai as genai
 from django.conf import settings
 import json
 from datetime import datetime, timedelta
 
 class GeminiAIService:
     def __init__(self):
+        try:
+            import google.generativeai as genai
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "The 'google.generativeai' package is required for GeminiAIService. "
+                "Install it with 'pip install google-generativeai' or disable Gemini AI features."
+            ) from exc
+
         if not settings.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is not set in settings")
         genai.configure(api_key=settings.GEMINI_API_KEY)
