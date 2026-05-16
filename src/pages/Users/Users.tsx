@@ -30,14 +30,21 @@ export const Users: React.FC = () => {
     // keep existing signature; data loaded by react-query
   }, [currentPage]);
 
-  const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery(['users', currentPage], async () => {
-    const res = await userService.getUsers({ page: currentPage });
-    return res.data;
-  }, { keepPreviousData: true });
+  const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
+    queryKey: ['users', currentPage],
+    queryFn: async () => {
+      const res = await userService.getUsers({ page: currentPage });
+      return res.data;
+    },
+    placeholderData: (prev) => prev
+  });
 
-  const { data: branchesData, isLoading: branchesLoading } = useQuery(['branches'], async () => {
-    const res = await inventoryService.getBranches();
-    return res.data;
+  const { data: branchesData, isLoading: branchesLoading } = useQuery({
+    queryKey: ['branches'],
+    queryFn: async () => {
+      const res = await inventoryService.getBranches();
+      return res.data;
+    }
   });
 
   useEffect(() => {

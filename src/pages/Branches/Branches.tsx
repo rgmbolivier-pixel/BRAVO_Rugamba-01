@@ -28,11 +28,15 @@ export const Branches: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const { data: branchesData, isLoading, error } = useQuery(['branches', currentPage], async () => {
-    const res = await inventoryService.getBranches({ page: currentPage });
-    const perf = await import('../../services/api').then(m => m.analyticsService.getBranchPerformance());
-    return { branchesRes: res.data, perfRes: perf.data };
-  }, { keepPreviousData: true });
+  const { data: branchesData, isLoading, error } = useQuery({
+    queryKey: ['branches', currentPage],
+    queryFn: async () => {
+      const res = await inventoryService.getBranches({ page: currentPage });
+      const perf = await import('../../services/api').then(m => m.analyticsService.getBranchPerformance());
+      return { branchesRes: res.data, perfRes: perf.data };
+    },
+    placeholderData: (prev) => prev
+  });
 
   React.useEffect(() => {
     if (!branchesData) return;
@@ -60,7 +64,10 @@ export const Branches: React.FC = () => {
     setBranches(mapped);
   }, [branchesData]);
 
-  if (isLoading) setLoading(true);
+  React.useEffect(() => {
+    setLoading(isLoading);
+  }, [isLoading]);
+
   if (error) console.error('Branches fetch error', error);
 
   const openAdd = () => { setForm({ ...EMPTY, branch_code: `BR-${Date.now().toString().slice(-4)}` }); setEditId(null); setShowForm(true); };
