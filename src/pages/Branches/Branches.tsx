@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Users, Clock, Plus, BarChart2, Edit2, Trash2, X, Power } from 'lucide-react';
 import { inventoryService } from '../../services/api';
+import { useQuery } from '@tanstack/react-query';
 import { Pagination } from '../../components/Pagination';
 import './Branches.css';
 
@@ -17,7 +18,7 @@ const EMPTY: any = { name: '', address: '', city: 'Baku', manager: '', phone: ''
 export const Branches: React.FC = () => {
   const navigate = useNavigate();
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(EMPTY);
@@ -27,49 +28,40 @@ export const Branches: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  useEffect(() => {
-    fetchBranches(currentPage);
-  }, [currentPage]);
+  const { data: branchesData, isLoading, error } = useQuery(['branches', currentPage], async () => {
+    const res = await inventoryService.getBranches({ page: currentPage });
+    const perf = await import('../../services/api').then(m => m.analyticsService.getBranchPerformance());
+    return { branchesRes: res.data, perfRes: perf.data };
+  }, { keepPreviousData: true });
 
-  const fetchBranches = async (page = 1) => {
-    setLoading(true);
-    try {
-      const [branchesRes, perfRes] = await Promise.all([
-        inventoryService.getBranches({ page }),
-        import('../../services/api').then(m => m.analyticsService.getBranchPerformance())
-      ]);
-      
-      const branchesData = branchesRes.data;
-      let branchList: any[] = [];
-      
-      if (branchesData.results) {
-        branchList = branchesData.results;
-        setTotalCount(branchesData.count);
-      } else {
-        branchList = Array.isArray(branchesData) ? branchesData : [];
-        setTotalCount(branchList.length);
-      }
-      
-      const perfData = perfRes.data;
-      
-      const mapped = branchList.map((b: any) => {
-        const perf = Array.isArray(perfData) ? (perfData.find((p: any) => p.id === b.id) || {}) : {};
-        return {
-          ...b,
-          waste: perf.waste || '$0',
-          saved: perf.saved || '$0',
-          score: perf.score || 0,
-          staff_count: b.staff_count || 0
-        };
-      });
-      
-      setBranches(mapped);
-    } catch (err) {
-      console.error('Failed to fetch branches', err);
-    } finally {
-      setLoading(false);
+  React.useEffect(() => {
+    if (!branchesData) return;
+    setLoading(false);
+    const bData = branchesData.branchesRes;
+    let branchList: any[] = [];
+    if (bData.results) {
+      branchList = bData.results;
+      setTotalCount(bData.count);
+    } else {
+      branchList = Array.isArray(bData) ? bData : [];
+      setTotalCount(branchList.length);
     }
-  };
+    const perfData = branchesData.perfRes;
+    const mapped = branchList.map((b: any) => {
+      const perfItem = Array.isArray(perfData) ? (perfData.find((p: any) => p.id === b.id) || {}) : {};
+      return {
+        ...b,
+        waste: perfItem.waste || '$0',
+        saved: perfItem.saved || '$0',
+        score: perfItem.score || 0,
+        staff_count: b.staff_count || 0
+      };
+    });
+    setBranches(mapped);
+  }, [branchesData]);
+
+  if (isLoading) setLoading(true);
+  if (error) console.error('Branches fetch error', error);
 
   const openAdd = () => { setForm({ ...EMPTY, branch_code: `BR-${Date.now().toString().slice(-4)}` }); setEditId(null); setShowForm(true); };
   

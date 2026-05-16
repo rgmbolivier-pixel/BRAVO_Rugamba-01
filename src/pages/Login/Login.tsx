@@ -12,7 +12,11 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true });
+    if (user) {
+      if (user.role === 'admin') navigate('/analytics', { replace: true });
+      else if (user.role === 'manager') navigate('/dashboard', { replace: true });
+      else navigate('/my-shift', { replace: true });
+    }
   }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -20,8 +24,14 @@ export const Login: React.FC = () => {
     setError(null);
     
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      const u: any = await login(email, password);
+      if (u) {
+        if (u.role === 'admin') navigate('/analytics');
+        else if (u.role === 'manager') navigate('/dashboard');
+        else navigate('/my-shift');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Authentication failed. Please check your credentials.');
     }

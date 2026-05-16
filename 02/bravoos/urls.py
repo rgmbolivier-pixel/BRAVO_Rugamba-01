@@ -20,6 +20,13 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/accounts/', include('apps.accounts.urls')),
+   # App API routes
+   path('api/inventory/', include('apps.inventory.urls')),
+   path('api/analytics/', include('apps.analytics.urls')),
+   path('api/tasks/', include('apps.tasks.urls')),
+   path('api/supply-chain/', include('apps.supply_chain.urls')),
+   path('api/waste/', include('apps.waste_management.urls')),
+   path('api/shifts/', include('shifts.urls')),
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),

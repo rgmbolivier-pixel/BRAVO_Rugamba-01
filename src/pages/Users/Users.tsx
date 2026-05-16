@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, Shield, Edit2, Trash2, X, Key } from 'lucide-react';
 import { userService, inventoryService } from '../../services/api';
+import { useQuery } from '@tanstack/react-query';
 import { Pagination } from '../../components/Pagination';
 import './Users.css';
 
@@ -26,18 +27,21 @@ export const Users: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    fetchData(currentPage);
+    // keep existing signature; data loaded by react-query
   }, [currentPage]);
 
-  const fetchData = async (page = 1) => {
-    setLoading(true);
-    try {
-      const [usersRes, branchesRes] = await Promise.all([
-        userService.getUsers({ page }),
-        inventoryService.getBranches()
-      ]);
-      
-      const usersData = usersRes.data;
+  const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery(['users', currentPage], async () => {
+    const res = await userService.getUsers({ page: currentPage });
+    return res.data;
+  }, { keepPreviousData: true });
+
+  const { data: branchesData, isLoading: branchesLoading } = useQuery(['branches'], async () => {
+    const res = await inventoryService.getBranches();
+    return res.data;
+  });
+
+  useEffect(() => {
+    if (usersData) {
       if (usersData.results) {
         setUsers(usersData.results);
         setTotalCount(usersData.count);
@@ -45,15 +49,13 @@ export const Users: React.FC = () => {
         setUsers(usersData);
         setTotalCount(usersData.length);
       }
-      
-      const branchesData = branchesRes.data;
-      setBranches(Array.isArray(branchesData) ? branchesData : (branchesData.results || []));
-    } catch (err) {
-      console.error('Failed to fetch user data', err);
-    } finally {
-      setLoading(false);
     }
-  };
+    if (branchesData) {
+      setBranches(Array.isArray(branchesData) ? branchesData : (branchesData.results || []));
+    }
+    setLoading(Boolean(usersLoading || branchesLoading));
+    if (usersError) console.error('Failed to fetch user data', usersError);
+  }, [usersData, branchesData, usersLoading, branchesLoading, usersError]);
 
   const openAdd = () => { setForm(EMPTY); setEditId(null); setShowForm(true); };
   

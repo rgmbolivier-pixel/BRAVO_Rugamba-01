@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { authService } from '../services/api';
+import { setToken } from '../lib/api/client';
 import { jwtDecode } from 'jwt-decode';
 
 export type UserRole = 'admin' | 'manager' | 'staff';
@@ -29,16 +30,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const decoded: any = jwtDecode(token);
+          const decoded: any = jwtDecode(token as string);
           // If token is expired, logout
           if (decoded.exp * 1000 < Date.now()) {
             logout();
-          } else {
-            // Fetch profile to get full user data
-            const res = await authService.getUser();
-            setUser(res.data);
+            setLoading(false);
+            return;
           }
+          // Fetch profile to get full user data
+          const res = await authService.getUser();
+          setUser(res.data);
         } catch (err) {
+          console.error('Auth init error', err);
           logout();
         }
       }
@@ -48,18 +51,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = async (email: string, password: string) => {
-    const res = await authService.login({ email, password });
-    const { access, refresh, user: userData } = res.data;
-    
-    localStorage.setItem('token', access);
-    localStorage.setItem('refresh', refresh);
-    setUser(userData);
+    setLoading(true);
+    try {
+      const res = await authService.login({ email, password });
+      const { access, refresh, user: userData } = res.data;
+      localStorage.setItem('token', access);
+      localStorage.setItem('refresh', refresh);
+      setToken(access);
+      setUser(userData);
+      return userData;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('refresh');
+    setToken(null);
   };
 
   return (
