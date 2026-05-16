@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Search, Upload, Download, Edit3, ScanLine, Package, AlertTriangle, TrendingDown, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
