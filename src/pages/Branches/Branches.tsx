@@ -28,7 +28,7 @@ export const Branches: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const { data: branchesData, isLoading, error } = useQuery({
+  const { data: branchesData, isLoading, error, refetch } = useQuery({
     queryKey: ['branches', currentPage],
     queryFn: async () => {
       const res = await inventoryService.getBranches({ page: currentPage });
@@ -82,7 +82,7 @@ export const Branches: React.FC = () => {
     if (confirm('Delete this branch?')) {
       try {
         await inventoryService.deleteBranch(id);
-        fetchBranches();
+        refetch();
       } catch (err) {
         alert('Failed to delete branch');
       }
@@ -97,7 +97,7 @@ export const Branches: React.FC = () => {
       } else {
         await inventoryService.addBranch(form);
       }
-      fetchBranches();
+      refetch();
       setShowForm(false); setEditId(null);
     } catch (err) {
       alert('Failed to save branch');

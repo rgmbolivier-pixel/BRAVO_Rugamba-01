@@ -30,7 +30,7 @@ export const Users: React.FC = () => {
     // keep existing signature; data loaded by react-query
   }, [currentPage]);
 
-  const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
+  const { data: usersData, isLoading: usersLoading, error: usersError, refetch } = useQuery({
     queryKey: ['users', currentPage],
     queryFn: async () => {
       const res = await userService.getUsers({ page: currentPage });
@@ -76,7 +76,7 @@ export const Users: React.FC = () => {
     if (confirm('Delete this user?')) {
       try {
         await userService.deleteUser(id);
-        fetchData();
+        refetch();
       } catch (err) {
         alert('Failed to delete user');
       }
@@ -91,7 +91,7 @@ export const Users: React.FC = () => {
       } else {
         await userService.createUser(form);
       }
-      fetchData();
+      refetch();
       setShowForm(false); setEditId(null);
     } catch (err) {
       alert('Failed to save user');

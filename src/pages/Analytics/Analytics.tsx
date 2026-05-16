@@ -13,6 +13,7 @@ export const Analytics: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [perf, setPerf] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiSummary, setAiSummary] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -21,12 +22,14 @@ export const Analytics: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [statsRes, perfRes] = await Promise.all([
+      const [statsRes, perfRes, summaryRes] = await Promise.all([
         analyticsService.getNetworkStats(),
-        analyticsService.getBranchPerformance()
+        analyticsService.getBranchPerformance(),
+        analyticsService.getDashboardSummary()
       ]);
       setStats(statsRes.data);
       setPerf(perfRes.data);
+      setAiSummary(summaryRes.data);
     } catch (err) {
       console.error('Failed to fetch analytics', err);
     } finally {
@@ -39,12 +42,12 @@ export const Analytics: React.FC = () => {
   const isAdmin = user?.role === 'admin';
 
   if (isAdmin) {
-    return <AdminAnalytics stats={stats} perf={perf} />;
+    return <AdminAnalytics stats={stats} perf={perf} aiSummary={aiSummary} />;
   }
-  return <ManagerAnalytics stats={stats} perf={perf.filter(p => p.id === user?.branch)} />;
+  return <ManagerAnalytics stats={stats} perf={perf.filter(p => p.id === user?.branch)} aiSummary={aiSummary} />;
 };
 
-const AdminAnalytics: React.FC<{ stats: any, perf: any[] }> = ({ stats, perf }) => {
+const AdminAnalytics: React.FC<{ stats: any, perf: any[], aiSummary: any }> = ({ stats, perf, aiSummary }) => {
   return (
     <div className="analytics-container page-container terminal-ui">
       <header className="page-header glow-panel">
@@ -187,7 +190,7 @@ const AdminAnalytics: React.FC<{ stats: any, perf: any[] }> = ({ stats, perf }) 
   );
 };
 
-const ManagerAnalytics: React.FC<{ stats: any, perf: any[] }> = ({ stats, perf }) => {
+const ManagerAnalytics: React.FC<{ stats: any, perf: any[], aiSummary: any }> = ({ stats, perf, aiSummary }) => {
   const p = perf[0] || {};
   return (
     <div className="analytics-container page-container terminal-ui">
@@ -300,9 +303,17 @@ const ManagerAnalytics: React.FC<{ stats: any, perf: any[] }> = ({ stats, perf }
           </h2>
         </div>
         <ul className="insight-list">
-          <li><span className="text-danger">•</span> Dairy waste is 15% higher than network average. Check cooler temps.</li>
-          <li><span className="text-primary">•</span> Best discount time: 4-6 PM (67% of discounted items sell)</li>
-          <li><span className="text-success">•</span> Store is currently operating at {p.score}% FEFO compliance.</li>
+          {aiSummary?.actionable_items ? (
+            aiSummary.actionable_items.map((item: string, i: number) => (
+              <li key={i}><span className={i === 0 ? "text-danger" : i === 1 ? "text-warning" : "text-primary"}>•</span> {item}</li>
+            ))
+          ) : (
+            <>
+              <li><span className="text-danger">•</span> Dairy waste is 15% higher than network average. Check cooler temps.</li>
+              <li><span className="text-primary">•</span> Best discount time: 4-6 PM (67% of discounted items sell)</li>
+              <li><span className="text-success">•</span> Store is currently operating at {p.score}% FEFO compliance.</li>
+            </>
+          )}
         </ul>
       </div>
     </div>

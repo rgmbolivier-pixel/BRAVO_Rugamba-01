@@ -1,6 +1,7 @@
 import React from 'react';
 import { Topbar } from './Topbar';
 import { motion } from 'framer-motion';
+import { Chatbot } from '../Chatbot/Chatbot';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </motion.main>
       </div>
+      <Chatbot />
 
       <style>{`
         .app-container {

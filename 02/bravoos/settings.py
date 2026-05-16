@@ -139,8 +139,8 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Baku'
 
 # Google Gemini AI Configuration
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-pro')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyD9xfH2xWo0ib3YNgJKSiweBPsUWyzJky0')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'

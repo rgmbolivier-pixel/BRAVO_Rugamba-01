@@ -45,6 +45,7 @@ export const analyticsService = {
   getDashboardSummary: () => api.get('/analytics/dashboard-summary/'),
   getNetworkStats: () => api.get('/analytics/network-stats/'),
   getBranchPerformance: () => api.get('/analytics/branch-performance/'),
+  chat: (query: string) => api.post('/analytics/chat/', { query }),
 };
 
 export const supplyChainService = {

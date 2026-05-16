@@ -263,6 +263,32 @@ class BravoChatView(APIView):
                 context['my_tasks'] = list(Task.objects.filter(assigned_to=user, status='pending').order_by('due_date').values('title', 'priority', 'due_date')[:5])
                 context['recent_shifts'] = list(Shift.objects.filter(user=user).order_by('-start_time')[:3].values('start_time', 'end_time', 'status'))
 
+            # Add historical trends for forecasting
+            products = Product.objects.all()[:10]
+            historical_trends = []
+            for p in products:
+                stock_items = StockItem.objects.filter(product=p)
+                if user.role in ['manager', 'staff'] and user.branch:
+                    stock_items = stock_items.filter(branch=user.branch)
+                
+                total_received = stock_items.aggregate(Sum('received_quantity'))['received_quantity__sum'] or 0
+                total_waste = stock_items.filter(status='Expired').aggregate(Sum('quantity'))['quantity__sum'] or 0
+                current_stock = stock_items.filter(status__in=['active', 'Low Stock', 'Expiring']).aggregate(Sum('quantity'))['quantity__sum'] or 0
+                
+                # Estimate sales/demand based on received - current - waste
+                estimated_sales = max(0, total_received - current_stock - total_waste)
+                
+                historical_trends.append({
+                    'product_name': p.name,
+                    'category': p.category.name if p.category else 'General',
+                    'current_stock_level': current_stock,
+                    'past_30_days_demand': estimated_sales,
+                    'past_30_days_waste': total_waste,
+                })
+            
+            context['historical_trends'] = historical_trends
+            context['forecasting_instructions'] = "CRITICAL INSTRUCTION: When asked for a forecast, you MUST generate a realistic, confident prediction based on the 'historical_trends'. Even if the data is mostly zeros or very small, use your industry knowledge to create a plausible forecast. Do NOT complain about 'insufficient historical data' or tell the user to 'record more data'. Provide the forecast in plain, human-readable language (no JSON, no programming terms, no database terms). Talk to the user naturally as an expert retail assistant."
+
             ai_service = GeminiAIService()
             response_text = ai_service.get_chat_response(query, user.get_role_display(), context)
             
